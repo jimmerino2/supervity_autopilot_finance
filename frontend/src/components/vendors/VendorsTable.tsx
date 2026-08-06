@@ -6,6 +6,19 @@ import { Input } from '@/components/ui/input'
 import { Icons } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
+export interface BankAccountHistoryEntry {
+  bank_key: string
+  valid_to?: string
+  vendor_id?: number
+  changed_by?: string
+  is_current?: boolean
+  valid_from?: string
+  sequence_no?: number
+  bank_country?: string
+  change_source?: string
+  account_number?: string
+}
+
 export interface VendorRecord {
   vendor_id: number
   vendor_name: string
@@ -21,6 +34,8 @@ export interface VendorRecord {
   country_code: string
   email: string
   created_at?: string
+  last_bank_change_at?: string | null
+  bank_account_history?: BankAccountHistoryEntry[]
 }
 
 type Column = {
@@ -35,6 +50,7 @@ type SortDirection = 'asc' | 'desc'
 
 interface VendorsTableProps {
   rows: VendorRecord[]
+  onView?: (row: VendorRecord) => void
   onEdit?: (row: VendorRecord) => void
   onDelete?: (row: VendorRecord) => void
 }
@@ -48,7 +64,7 @@ const columns: Column[] = [
   { key: 'payment_terms', label: 'Payment Terms' },
 ]
 
-export function VendorsTable({ rows, onEdit, onDelete }: VendorsTableProps) {
+export function VendorsTable({ rows, onView, onEdit, onDelete }: VendorsTableProps) {
   const [filter, setFilter] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('vendor_name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -143,7 +159,7 @@ export function VendorsTable({ rows, onEdit, onDelete }: VendorsTableProps) {
                   </div>
                 </th>
               ))}
-              {(onEdit || onDelete) && (
+              {(onView || onEdit || onDelete) && (
                 <th className='px-4 py-3 text-left font-semibold text-slate-700'>Actions</th>
               )}
             </tr>
@@ -151,7 +167,7 @@ export function VendorsTable({ rows, onEdit, onDelete }: VendorsTableProps) {
           <tbody>
             {filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (onEdit || onDelete ? 1 : 0)} className='px-4 py-6 text-center text-sm text-muted-foreground'>
+                <td colSpan={columns.length + ((onView || onEdit || onDelete) ? 1 : 0)} className='px-4 py-6 text-center text-sm text-muted-foreground'>
                   No matching vendors found.
                 </td>
               </tr>
@@ -164,9 +180,15 @@ export function VendorsTable({ rows, onEdit, onDelete }: VendorsTableProps) {
                   <td className='whitespace-nowrap px-4 py-4'>{row.bank_country}</td>
                   <td className='whitespace-nowrap px-4 py-4'>{row.currency_code}</td>
                   <td className='whitespace-nowrap px-4 py-4'>{row.payment_terms}</td>
-                  {(onEdit || onDelete) && (
+                  {(onView || onEdit || onDelete) && (
                     <td className='whitespace-nowrap px-4 py-4'>
                       <div className='flex items-center gap-2'>
+                        {onView && (
+                          <Button variant='outline' size='sm' className='gap-1' onClick={() => onView(row)}>
+                            <Icons.eye className='h-4 w-4' />
+                            View
+                          </Button>
+                        )}
                         {onEdit && (
                           <Button variant='outline' size='sm' className='gap-1' onClick={() => onEdit(row)}>
                             <Icons.edit className='h-4 w-4' />

@@ -69,6 +69,7 @@ export default function AdminVendorsPage() {
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedVendor, setSelectedVendor] = useState<VendorRecord | null>(null)
 
@@ -114,6 +115,11 @@ export default function AdminVendorsPage() {
   const openCreateDialog = () => {
     resetForm()
     setCreateDialogOpen(true)
+  }
+
+  const openViewDialog = (vendor: VendorRecord) => {
+    setSelectedVendor(vendor)
+    setViewDialogOpen(true)
   }
 
   const openEditDialog = (vendor: VendorRecord) => {
@@ -237,10 +243,100 @@ export default function AdminVendorsPage() {
               {error}
             </div>
           ) : (
-            <VendorsTable rows={vendors} onEdit={openEditDialog} onDelete={openDeleteDialog} />
+            <VendorsTable rows={vendors} onView={openViewDialog} onEdit={openEditDialog} onDelete={openDeleteDialog} />
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className='sm:max-w-3xl'>
+          <DialogHeader>
+            <DialogTitle>Vendor Details</DialogTitle>
+            <DialogDescription>View vendor master data and the complete bank account history.</DialogDescription>
+          </DialogHeader>
+
+          {selectedVendor && (
+            <div className='space-y-5 py-2'>
+              <div className='grid gap-4 sm:grid-cols-2'>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Vendor Name</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.vendor_name}</p>
+                </div>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Tax ID</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.tax_id || '—'}</p>
+                </div>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Email</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.email || '—'}</p>
+                </div>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Last Bank Change</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.last_bank_change_at || '—'}</p>
+                </div>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Current Bank Key</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.bank_key || '—'}</p>
+                </div>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Current Account</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.bank_account_number || '—'}</p>
+                </div>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Country / Currency</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.country_code} / {selectedVendor.currency_code}</p>
+                </div>
+                <div>
+                  <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Payment Terms</Label>
+                  <p className='mt-1 text-sm'>{selectedVendor.payment_terms || '—'}</p>
+                </div>
+              </div>
+
+              <div>
+                <Label className='text-xs uppercase tracking-[0.2em] text-slate-500'>Bank Account History</Label>
+                <div className='mt-2 overflow-hidden rounded-2xl border border-border'>
+                  <table className='min-w-full divide-y divide-border text-sm'>
+                    <thead className='bg-slate-50'>
+                      <tr>
+                        <th className='px-3 py-2 text-left font-medium text-slate-600'>Bank Key</th>
+                        <th className='px-3 py-2 text-left font-medium text-slate-600'>Account</th>
+                        <th className='px-3 py-2 text-left font-medium text-slate-600'>Valid From</th>
+                        <th className='px-3 py-2 text-left font-medium text-slate-600'>Valid To</th>
+                        <th className='px-3 py-2 text-left font-medium text-slate-600'>Changed By</th>
+                        <th className='px-3 py-2 text-left font-medium text-slate-600'>Source</th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y divide-border bg-white'>
+                      {(selectedVendor.bank_account_history || []).length > 0 ? (
+                        selectedVendor.bank_account_history!.map((entry, index) => (
+                          <tr key={`${entry.bank_key}-${index}`}>
+                            <td className='px-3 py-2'>{entry.bank_key || '—'}</td>
+                            <td className='px-3 py-2'>{entry.account_number || '—'}</td>
+                            <td className='px-3 py-2'>{entry.valid_from || '—'}</td>
+                            <td className='px-3 py-2'>{entry.valid_to || '—'}</td>
+                            <td className='px-3 py-2'>{entry.changed_by || '—'}</td>
+                            <td className='px-3 py-2'>{entry.change_source || '—'}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className='px-3 py-4 text-center text-muted-foreground'>No bank history available.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setViewDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className='sm:max-w-2xl'>
