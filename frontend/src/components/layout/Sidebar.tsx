@@ -74,11 +74,29 @@ const navItems: NavSection[] = [
     ],
   },
   {
+    title: 'Procurement',
+    items: [
+      { href: '/admin/purchase-orders', label: 'Purchase Orders', icon: Icons.folder },
+      { href: '/admin/goods-receipts', label: 'Goods Receipts', icon: Icons.archive },
+      { href: '/admin/invoices-log', label: 'Invoice Intake Log', icon: Icons.fileText },
+      { href: '/admin/email-log', label: 'Email Log', icon: Icons.mail },
+    ],
+  },
+  {
+    title: 'Master Data',
+    items: [
+      { href: '/admin/vendors', label: 'Vendors', icon: Icons.table },
+      { href: '/admin/companies', label: 'Companies', icon: Icons.building },
+      { href: '/admin/gl-accounts', label: 'GL Accounts', icon: Icons.table2 },
+      { href: '/admin/price-conditions', label: 'Price Conditions', icon: Icons.flag },
+      { href: '/admin/fx-rates', label: 'FX Rates', icon: Icons.trendingUp },
+    ],
+  },
+  {
     title: 'System',
     items: [
       { href: '/settings', label: 'Settings', icon: Icons.settings },
       { href: '/admin/approvers', label: 'Approvers', icon: Icons.table },
-      { href: '/admin/vendors', label: 'Vendors', icon: Icons.table },
     ],
   },
 ]

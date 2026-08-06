@@ -47,6 +47,15 @@ from .routers import (
     approval_matrix_router,
     invoice_router,
     vendor_router,
+    company_router,
+    email_log_router,
+    fx_rate_router,
+    gl_account_router,
+    goods_receipt_router,
+    invoices_log_router,
+    price_condition_router,
+    purchase_order_router,
+    purchase_order_line_router,
 )
 from .security import get_current_user, verify_access
 
@@ -167,6 +176,17 @@ api_router.include_router(approval_log_router)
 api_router.include_router(approval_matrix_router)
 api_router.include_router(invoice_router)
 api_router.include_router(vendor_router)
+
+# New Supabase read/CRUD modules
+api_router.include_router(company_router)
+api_router.include_router(email_log_router)
+api_router.include_router(fx_rate_router)
+api_router.include_router(gl_account_router)
+api_router.include_router(goods_receipt_router)
+api_router.include_router(invoices_log_router)
+api_router.include_router(price_condition_router)
+api_router.include_router(purchase_order_router)
+api_router.include_router(purchase_order_line_router)
 
 
 # =============================================================================
