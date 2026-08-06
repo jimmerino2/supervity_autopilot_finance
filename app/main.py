@@ -56,6 +56,7 @@ from .routers import (
     price_condition_router,
     purchase_order_router,
     purchase_order_line_router,
+    policies_router,
 )
 from .security import get_current_user, verify_access
 
@@ -187,6 +188,7 @@ api_router.include_router(invoices_log_router)
 api_router.include_router(price_condition_router)
 api_router.include_router(purchase_order_router)
 api_router.include_router(purchase_order_line_router)
+api_router.include_router(policies_router)
 
 
 # =============================================================================

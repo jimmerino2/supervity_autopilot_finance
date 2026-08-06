@@ -305,3 +305,6 @@ deployment/prod.env
 
 keycloak_convert/
 keycloak_convert.zip
+
+# Claude
+.claude

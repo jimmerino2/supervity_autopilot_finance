@@ -1,7 +1,6 @@
 # app/services/supervity.py
 
 import os
-import json
 import httpx
 
 SUPERVITY_BASE_URL = os.getenv("SUPERVITY_BASE_URL", "https://auto-workflow-api.supervity.ai/api/v1")
@@ -173,21 +172,19 @@ async def execute_workflow(workflow_id: str, inputs: dict | None = None, envs: d
     Waits for completion before returning. Can be long-running — prefer
     execute_workflow_stream() for UI-facing calls.
 
-    NOTE: multipart/form-data body — do not set Content-Type manually,
-    httpx sets the correct multipart boundary automatically when using `data=`.
+    NOTE: the API expects `inputs`/`envs` as native JSON objects, not
+    JSON-encoded strings inside a form body — sending them as strings (form or
+    multipart) fails schema validation with "expected record, received string".
     """
-    data = {
+    payload = {
         "workflowId": workflow_id,
-        "inputs": json.dumps(inputs or {}),
-        "envs": json.dumps(envs or {}),
+        "inputs": inputs or {},
+        "envs": envs or {},
     }
-    # Don't reuse the module-level `headers` Content-Type-sensitive dict blindly;
-    # multipart needs its boundary auto-set, so exclude any preset Content-Type.
-    execute_headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
 
     async with httpx.AsyncClient(timeout=300) as client:  # long timeout: blocking execution
         response = await client.post(
-            f"{SUPERVITY_BASE_URL}/workflow-runs/execute", headers=execute_headers, data=data
+            f"{SUPERVITY_BASE_URL}/workflow-runs/execute", headers=headers, json=payload
         )
         _log_error(response)
         response.raise_for_status()
@@ -200,16 +197,15 @@ async def execute_workflow_stream(workflow_id: str, inputs: dict | None = None, 
     Async generator yielding raw SSE lines. Events include: ping, activity-run,
     workflow-run, thinking, result, error.
     """
-    data = {
+    payload = {
         "workflowId": workflow_id,
-        "inputs": json.dumps(inputs or {}),
-        "envs": json.dumps(envs or {}),
+        "inputs": inputs or {},
+        "envs": envs or {},
     }
-    execute_headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
 
     async with httpx.AsyncClient(timeout=None) as client:
         async with client.stream(
-            "POST", f"{SUPERVITY_BASE_URL}/workflow-runs/execute/stream", headers=execute_headers, data=data
+            "POST", f"{SUPERVITY_BASE_URL}/workflow-runs/execute/stream", headers=headers, json=payload
         ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():

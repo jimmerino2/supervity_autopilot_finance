@@ -31,6 +31,7 @@ from .invoices_log import router as invoices_log_router
 from .price_condition import router as price_condition_router
 from .purchase_order import router as purchase_order_router
 from .purchase_order_line import router as purchase_order_line_router
+from .policies import router as policies_router
 
 __all__ = [
     "health_router",
@@ -53,4 +54,5 @@ __all__ = [
     "price_condition_router",
     "purchase_order_router",
     "purchase_order_line_router",
+    "policies_router",
 ]

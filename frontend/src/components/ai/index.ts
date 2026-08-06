@@ -11,12 +11,10 @@ export { TeachAI } from './TeachAI'
 
 // Policy Components - New
 export { PolicyCard } from './policies/PolicyCard'
-export type { Policy, PolicyDSL, PolicyCondition, PolicyAction } from './policies/PolicyCard'
+export type { Policy } from './policies/PolicyCard'
 export { PolicyDetailModal } from './policies/PolicyDetailModal'
 export { PolicyEditModal } from './policies/PolicyEditModal'
 export { CreateWithAI } from './policies/CreateWithAI'
-export { StructuredBuilder } from './policies/StructuredBuilder'
-export { PermissionMatrixTab } from './policies/PermissionMatrixTab'
 
 // Policy Components - Legacy (used by TeachAI)
 export { RuleBuilderModal } from './policies/RuleBuilderModal'
