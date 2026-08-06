@@ -63,6 +63,7 @@ const navItems: NavSection[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: Icons.dashboard },
       { href: '/workbench', label: 'Workbench', icon: Icons.workbench },
+      { href: '/admin/invoices', label: 'Invoices', icon: Icons.fileText },
     ],
   },
   {

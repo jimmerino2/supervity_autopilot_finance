@@ -45,6 +45,7 @@ from .routers import (
     supervity_router,
     approval_log_router,
     approval_matrix_router,
+    invoice_router,
     vendor_router,
 )
 from .security import get_current_user, verify_access
@@ -164,6 +165,7 @@ api_router.include_router(supervity_router)
 # Supabase tables
 api_router.include_router(approval_log_router)
 api_router.include_router(approval_matrix_router)
+api_router.include_router(invoice_router)
 api_router.include_router(vendor_router)
 
 

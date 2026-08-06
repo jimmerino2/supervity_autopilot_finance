@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, useInView } from 'framer-motion'
-import apiClient from '@/lib/api-client'
+import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CardWatermark } from '@/components/ui/card-watermark'
@@ -206,7 +206,7 @@ function DiagnosticsCard() {
     setIsLoading(true)
     setter('Loading...')
     try {
-      const data = await apiClient(endpoint)
+      const data = await apiClient.get(endpoint)
       setter(JSON.stringify(data, null, 2))
     } catch (error) {
       setter(
@@ -295,6 +295,58 @@ function DiagnosticsCard() {
 
 // Main Dashboard — no auth required, renders directly
 export default function HomePage() {
+  const [paidInvoiceCount, setPaidInvoiceCount] = useState(0)
+  const [invoiceTrend, setInvoiceTrend] = useState({ value: 'Loading...', positive: true })
+
+  const currentMonthLabel = new Date().toLocaleString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  })
+
+  useEffect(() => {
+    const loadPaidInvoiceMetrics = async () => {
+      try {
+        const invoices = await apiClient.get<Array<{ status?: string; posting_date?: string; document_date?: string }>>('/api/invoice')
+
+        const getMonthKey = (value?: string) => {
+          if (!value) return null
+          const normalizedValue = value.includes('T') || value.includes(' ') ? value.replace(' ', 'T') : value
+          const date = new Date(normalizedValue)
+          if (Number.isNaN(date.getTime())) return null
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        }
+
+        const now = new Date()
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const previousMonthKey = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`
+
+        const currentMonthCount = invoices.filter((invoice) => {
+          const invoiceMonth = getMonthKey(invoice.posting_date || invoice.document_date)
+          return invoice.status === 'paid' && invoiceMonth === currentMonthKey
+        }).length
+
+        const previousMonthCount = invoices.filter((invoice) => {
+          const invoiceMonth = getMonthKey(invoice.posting_date || invoice.document_date)
+          return invoice.status === 'paid' && invoiceMonth === previousMonthKey
+        }).length
+
+        const delta = currentMonthCount - previousMonthCount
+        setPaidInvoiceCount(currentMonthCount)
+        setInvoiceTrend({
+          value: delta === 0 ? 'No change vs last month' : `${delta > 0 ? '+' : ''}${delta} vs last month`,
+          positive: delta >= 0,
+        })
+      } catch (error) {
+        console.error('Failed to load invoice metrics', error)
+        setPaidInvoiceCount(0)
+        setInvoiceTrend({ value: 'Unable to load trend', positive: false })
+      }
+    }
+
+    loadPaidInvoiceMetrics()
+  }, [])
+
   return (
     <motion.div
       className='space-y-6'
@@ -308,10 +360,10 @@ export default function HomePage() {
       {/* Stats Grid - Bento style */}
       <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
         <StatCard
-          title='Total Users'
-          value={10400}
+          title={`Successful Invoices (${currentMonthLabel})`}
+          value={paidInvoiceCount}
           icon={Icons.users}
-          trend={{ value: '+12%', positive: true }}
+          trend={{ value: invoiceTrend.value, positive: invoiceTrend.positive }}
           colorClass='bg-brand-navy'
           delay={0.1}
         />
@@ -349,12 +401,14 @@ export default function HomePage() {
       </motion.div>
 
       {/* System Diagnostics */}
+      {/*
       <motion.div
         className='grid gap-6 lg:grid-cols-12'
         variants={itemVariants}
       >
         <DiagnosticsCard />
       </motion.div>
+      */}
     </motion.div>
   )
 }

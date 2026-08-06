@@ -18,6 +18,7 @@ from .supervity import router as supervity_router
 # Supabase tables
 from .approval_log import router as approval_log_router
 from .approval_matrix import router as approval_matrix_router
+from .invoice import router as invoice_router
 from .vendor import router as vendor_router
 
 __all__ = [
@@ -30,5 +31,6 @@ __all__ = [
     "supervity_router",
     "approval_log_router",
     "approval_matrix_router",
+    "invoice_router",
     "vendor_router",
 ]
