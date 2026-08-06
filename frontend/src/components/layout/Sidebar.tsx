@@ -76,8 +76,8 @@ const navItems: NavSection[] = [
     title: 'System',
     items: [
       { href: '/settings', label: 'Settings', icon: Icons.settings },
-      { href: '/users', label: 'Users', icon: Icons.users },
       { href: '/admin/approvers', label: 'Approvers', icon: Icons.table },
+      { href: '/admin/vendors', label: 'Vendors', icon: Icons.table },
     ],
   },
 ]
