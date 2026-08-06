@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { usePathname } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
@@ -131,7 +132,11 @@ function AIManagerTrigger() {
 
 // User menu with dropdown
 function UserMenu() {
-  const user = { name: 'Dev User', email: 'dev@autopilot.local' }
+  const { data: session } = useSession()
+  const user = {
+    name: session?.user?.name || 'Signed out',
+    email: session?.user?.email || '',
+  }
 
   return (
     <DropdownMenu>
@@ -181,6 +186,17 @@ function UserMenu() {
               <p className='truncate text-xs text-muted-foreground'>
                 {user.email}
               </p>
+              {session?.user?.role && (
+                <p className='truncate text-xs text-muted-foreground'>
+                  {session.user.role}
+                  {session.user.minAmount != null && session.user.maxAmount != null && (
+                    <>
+                      {' '}
+                      · Approves {session.user.minAmount.toLocaleString()}–{session.user.maxAmount.toLocaleString()}
+                    </>
+                  )}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -193,6 +209,13 @@ function UserMenu() {
           <DropdownMenuItem className='gap-3 rounded-lg px-3 py-2.5'>
             <Icons.settings className='h-4 w-4 text-muted-foreground' strokeWidth={1.5} />
             <span>Settings</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className='gap-3 rounded-lg px-3 py-2.5'
+            onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+          >
+            <Icons.logout className='h-4 w-4 text-muted-foreground' strokeWidth={1.5} />
+            <span>Sign Out</span>
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>

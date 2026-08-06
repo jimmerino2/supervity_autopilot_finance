@@ -14,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { useSession } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 
 // Sidebar context for collapse state
 interface SidebarContextType {
@@ -182,7 +182,6 @@ function NavLink({
 // User section at bottom of sidebar
 function SidebarUser({ isCollapsed }: { isCollapsed: boolean }) {
   const { data: session } = useSession()
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
   if (!session?.user) return null
 
@@ -217,9 +216,7 @@ function SidebarUser({ isCollapsed }: { isCollapsed: boolean }) {
         <Button
           variant='ghost'
           size='icon-sm'
-          onClick={() => {
-            window.location.href = `${basePath}/api/auth/logout`
-          }}
+          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
           className='shrink-0 text-brand-muted hover:text-brand-navy'
           title='Sign Out'
         >

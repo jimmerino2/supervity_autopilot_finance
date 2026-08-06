@@ -5,10 +5,14 @@ from app.core.supabase import supabase
 router = APIRouter(prefix="/approval_matrix", tags=["ApprovalMatrix"])
 
 @router.get("/")
-async def list_approval_matrix():
+async def list_approval_matrix(approver_email: str | None = None):
     try:
-        # Fetch all rows from the 'approval_matrix' table
-        response = supabase.table("approval_matrix").select("*").execute()
+        query = supabase.table("approval_matrix").select("*")
+        if approver_email:
+            # Case-insensitive exact match (no wildcards) — used by the login flow
+            # to look up an approver by the email they entered.
+            query = query.ilike("approver_email", approver_email)
+        response = query.execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

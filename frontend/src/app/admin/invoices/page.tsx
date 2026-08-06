@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label'
 import { apiClient } from '@/lib/api-client'
 import { Icons } from '@/components/ui/icons'
-import { InvoicesTable, InvoiceRecord } from '@/components/invoices/InvoicesTable'
+import { InvoicesTable, InvoiceRecord, parseAmount } from '@/components/invoices/InvoicesTable'
 
 const defaultInvoiceForm = {
   vendor_invoice_no: '',
@@ -34,6 +34,10 @@ export default function AdminInvoicesPage() {
   const [formValues, setFormValues] = useState(defaultInvoiceForm)
 
   const isAdmin = session?.roles?.includes('admin')
+  const approverRange =
+    session?.user?.minAmount != null && session?.user?.maxAmount != null
+      ? { min: session.user.minAmount, max: session.user.maxAmount }
+      : null
 
   useEffect(() => {
     if (status === 'loading') return
@@ -130,7 +134,12 @@ export default function AdminInvoicesPage() {
               {error}
             </div>
           ) : (
-            <InvoicesTable rows={invoices} onView={openViewDialog} onStatusChange={handleStatusChange} />
+            <InvoicesTable
+              rows={invoices}
+              onView={openViewDialog}
+              onStatusChange={handleStatusChange}
+              approverRange={approverRange}
+            />
           )}
         </CardContent>
       </Card>
@@ -179,6 +188,13 @@ export default function AdminInvoicesPage() {
                   <li>Pending approval → Open or Blocked</li>
                   <li>Open → Paid or Cancelled</li>
                 </ul>
+                {selectedInvoice.status?.toLowerCase() === 'open' && (
+                  <p className='mt-2 text-sm text-muted-foreground'>
+                    {approverRange
+                      ? `Your approval range: ${approverRange.min.toLocaleString()} – ${approverRange.max.toLocaleString()}`
+                      : 'Loading your approval range…'}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -187,11 +203,25 @@ export default function AdminInvoicesPage() {
             <Button variant='outline' onClick={() => setViewDialogOpen(false)}>
               Close
             </Button>
-            {selectedInvoice && ['pending approval', 'open'].includes((selectedInvoice.status || '').toLowerCase()) && (
-              <Button onClick={() => handleStatusChange(selectedInvoice, selectedInvoice.status?.toLowerCase() === 'pending approval' ? 'open' : 'paid')}>
-                {selectedInvoice.status?.toLowerCase() === 'pending approval' ? 'Approve to Open' : 'Mark Paid'}
-              </Button>
-            )}
+            {selectedInvoice && ['pending approval', 'open'].includes((selectedInvoice.status || '').toLowerCase()) && (() => {
+              const isPayAction = selectedInvoice.status?.toLowerCase() === 'open'
+              const amount = parseAmount(selectedInvoice.amount)
+              const outOfRange =
+                isPayAction &&
+                (!approverRange || amount == null || amount < approverRange.min || amount > approverRange.max)
+
+              return (
+                <Button
+                  disabled={outOfRange}
+                  title={outOfRange ? 'This invoice amount is outside your approval range' : undefined}
+                  onClick={() =>
+                    handleStatusChange(selectedInvoice, isPayAction ? 'paid' : 'open')
+                  }
+                >
+                  {isPayAction ? 'Mark Paid' : 'Approve to Open'}
+                </Button>
+              )
+            })()}
           </div>
         </DialogContent>
       </Dialog>

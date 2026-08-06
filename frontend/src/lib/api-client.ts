@@ -18,6 +18,12 @@ async function apiClientFetch<T = unknown>(endpoint: string, options: RequestIni
     headers.set('Authorization', `Bearer ${session.accessToken}`)
   }
 
+  if (session?.user?.email) {
+    // Lightweight identity signal for endpoints that need to know who's asking
+    // (e.g. enforcing an approver's min/max approval amount) without full JWT auth.
+    headers.set('X-Approver-Email', session.user.email)
+  }
+
   // Construct the full URL: http://localhost:8001/app1/api/test
   const fullUrl = `${API_URL}${BASE_PATH}${endpoint}`
 

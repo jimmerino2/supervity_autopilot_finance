@@ -2,11 +2,13 @@
 
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useEffect } from 'react'
+import { Suspense, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CardWatermark } from '@/components/ui/card-watermark'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Icons } from '@/components/ui/icons'
 import { Logomark } from '@/components/brand'
 
@@ -14,10 +16,31 @@ function SignInContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
 
-  // Auto-sign-in: immediately authenticate as Dev User
-  useEffect(() => {
-    signIn('autopilot-dev', { callbackUrl, redirect: true })
-  }, [callbackUrl])
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!email.trim()) return
+
+    setIsSubmitting(true)
+    setError(null)
+
+    const result = await signIn('approver-login', {
+      email: email.trim(),
+      redirect: false,
+      callbackUrl,
+    })
+
+    if (result?.error) {
+      setError('No approver account found for that email. Check with your admin if you believe this is a mistake.')
+      setIsSubmitting(false)
+      return
+    }
+
+    window.location.href = result?.url || callbackUrl
+  }
 
   return (
     <motion.div
@@ -28,7 +51,7 @@ function SignInContent() {
     >
       <Card className='relative overflow-hidden bg-white shadow-float-lg'>
         <CardWatermark opacity={4} scale={1} />
-        <CardHeader className='relative z-10 space-y-4 pb-8 text-center'>
+        <CardHeader className='relative z-10 space-y-4 pb-6 text-center'>
           <motion.div
             className='mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-navy shadow-xl'
             initial={{ scale: 0, rotate: -180 }}
@@ -51,31 +74,49 @@ function SignInContent() {
               AutoPilot
             </CardTitle>
             <p className='mt-2 text-muted-foreground'>
-              Signing you in...
+              Sign in with your approver email
             </p>
           </motion.div>
         </CardHeader>
         <CardContent className='relative z-10 space-y-4 px-8 pb-8'>
-          {/* Loading spinner while auto-signing in */}
-          <div className='flex justify-center py-4'>
-            <div className='h-8 w-8 animate-spin rounded-full border-4 border-brand-navy border-t-transparent' />
-          </div>
-          
-          <motion.div
+          <motion.form
+            onSubmit={handleSubmit}
+            className='space-y-4'
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.4 }}
           >
+            <div className='space-y-2 text-left'>
+              <Label htmlFor='email'>Email</Label>
+              <Input
+                id='email'
+                type='email'
+                autoFocus
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder='you@company.com'
+              />
+            </div>
+
+            {error && (
+              <div className='rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700'>
+                {error}
+              </div>
+            )}
+
             <Button
-              onClick={() => signIn('autopilot-dev', { callbackUrl, redirect: true })}
+              type='submit'
               variant='gradient'
               size='lg'
               className='group w-full py-6 text-base'
+              loading={isSubmitting}
+              disabled={isSubmitting || !email.trim()}
             >
-              Enter Command Center
+              Sign In
               <Icons.arrowRight className='ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1' />
             </Button>
-          </motion.div>
+          </motion.form>
 
           <motion.p
             className='text-center text-xs text-muted-foreground'
@@ -83,7 +124,7 @@ function SignInContent() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.4 }}
           >
-            Dev mode — no credentials required
+            Your email must match an approver on record. No password needed.
           </motion.p>
         </CardContent>
       </Card>

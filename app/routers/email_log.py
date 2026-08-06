@@ -10,9 +10,14 @@ _SELECT = "*, vendor:vendor(vendor_name)"
 
 
 @router.get("/")
-async def list_email_log():
+async def list_email_log(to_address: str | None = None):
     try:
-        response = supabase.table("email_log").select(_SELECT).execute()
+        query = supabase.table("email_log").select(_SELECT)
+        if to_address:
+            # Case-insensitive exact match — scopes the mailbox log to the
+            # signed-in user's own inbox.
+            query = query.ilike("to_address", to_address)
+        response = query.execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

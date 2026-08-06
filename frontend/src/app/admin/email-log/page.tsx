@@ -87,6 +87,7 @@ export default function AdminEmailLogPage() {
   const [viewOpen, setViewOpen] = useState(false)
 
   const isAdmin = session?.roles?.includes('admin')
+  const userEmail = session?.user?.email
 
   useEffect(() => {
     if (status === 'loading') return
@@ -101,15 +102,17 @@ export default function AdminEmailLogPage() {
       return
     }
 
-    fetchRows()
-  }, [status, isAdmin, router])
+    if (!userEmail) return
 
-  const fetchRows = async () => {
+    fetchRows(userEmail)
+  }, [status, isAdmin, userEmail, router])
+
+  const fetchRows = async (toAddress: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const data = await apiClient.get<EmailLogRecord[]>('/api/email_log')
+      const data = await apiClient.get<EmailLogRecord[]>(`/api/email_log?to_address=${encodeURIComponent(toAddress)}`)
       setRows(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load email log')
@@ -133,8 +136,10 @@ export default function AdminEmailLogPage() {
         </div>
 
         <p className='max-w-2xl text-sm text-muted-foreground'>
-          Read-only. <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>vendor_id</code> is a real foreign key
-          into Vendors, so it&apos;s shown by name below. <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>invoice_doc_no</code>{' '}
+          Read-only, and scoped to your own inbox — only messages addressed to{' '}
+          <span className='font-medium text-brand-navy'>{userEmail}</span> are shown.{' '}
+          <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>vendor_id</code> is a real foreign key into
+          Vendors, so it&apos;s shown by name below. <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>invoice_doc_no</code>{' '}
           is still captured as a plain value with no database foreign key back to Invoices.
         </p>
       </div>
@@ -144,7 +149,7 @@ export default function AdminEmailLogPage() {
         <CardHeader>
           <CardTitle>Messages</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/email_log</code>.
+            Records are loaded from <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/email_log?to_address={'{your_email}'}</code>.
           </CardDescription>
         </CardHeader>
         <CardContent>
