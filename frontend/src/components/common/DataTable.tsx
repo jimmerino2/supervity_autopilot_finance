@@ -23,7 +23,13 @@ interface DataTableProps<T> {
   onView?: (row: T) => void
   onEdit?: (row: T) => void
   onDelete?: (row: T) => void
+  /** When it returns false for a row, the View button is disabled instead of hidden. */
+  canView?: (row: T) => boolean
+  /** Tooltip shown on the View button when canView(row) is false. */
+  viewDisabledTooltip?: string
   emptyMessage?: string
+  defaultSortKey?: string
+  defaultSortDirection?: 'asc' | 'desc'
 }
 
 type SortDirection = 'asc' | 'desc'
@@ -37,11 +43,15 @@ export function DataTable<T>({
   onView,
   onEdit,
   onDelete,
+  canView,
+  viewDisabledTooltip,
   emptyMessage = 'No matching records found.',
+  defaultSortKey,
+  defaultSortDirection = 'asc',
 }: DataTableProps<T>) {
   const [filter, setFilter] = useState('')
-  const [sortKey, setSortKey] = useState<string>(columns[0]?.key ?? '')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [sortKey, setSortKey] = useState<string>(defaultSortKey ?? columns[0]?.key ?? '')
+  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSortDirection)
 
   const activeColumn = columns.find((c) => c.key === sortKey)
 
@@ -165,12 +175,23 @@ export function DataTable<T>({
                   {hasActions && (
                     <td className='whitespace-nowrap px-4 py-4'>
                       <div className='flex items-center gap-2'>
-                        {onView && (
-                          <Button variant='outline' size='sm' className='gap-1' onClick={() => onView(row)}>
-                            <Icons.eye className='h-4 w-4' />
-                            View
-                          </Button>
-                        )}
+                        {onView &&
+                          (() => {
+                            const viewable = canView ? canView(row) : true
+                            return (
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                className='gap-1'
+                                onClick={() => viewable && onView(row)}
+                                disabled={!viewable}
+                                title={!viewable ? viewDisabledTooltip : undefined}
+                              >
+                                <Icons.eye className='h-4 w-4' />
+                                View
+                              </Button>
+                            )
+                          })()}
                         {onEdit && (
                           <Button variant='outline' size='sm' className='gap-1' onClick={() => onEdit(row)}>
                             <Icons.edit className='h-4 w-4' />

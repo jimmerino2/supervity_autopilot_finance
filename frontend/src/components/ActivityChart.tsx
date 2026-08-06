@@ -15,16 +15,12 @@ import { CardWatermark } from '@/components/ui/card-watermark'
 import { Icons } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
-// Static activity data — deterministic to avoid SSR hydration mismatch
-const ACTIVITY_DATA = [
-  { name: 'Mon', sessions: 315, success: 460, aiCalls: 210 },
-  { name: 'Tue', sessions: 348, success: 485, aiCalls: 228 },
-  { name: 'Wed', sessions: 390, success: 502, aiCalls: 245 },
-  { name: 'Thu', sessions: 425, success: 498, aiCalls: 260 },
-  { name: 'Fri', sessions: 460, success: 520, aiCalls: 275 },
-  { name: 'Sat', sessions: 280, success: 440, aiCalls: 195 },
-  { name: 'Sun', sessions: 310, success: 455, aiCalls: 208 },
-]
+export interface ActivityChartDatum {
+  name: string
+  runs: number
+  completed: number
+  failed: number
+}
 
 // Custom tooltip component
 function CustomTooltip({
@@ -65,25 +61,30 @@ interface ActivityChartProps {
   className?: string
   title?: string
   description?: string
+  data?: ActivityChartDatum[]
+  isLoading?: boolean
 }
 
 export function ActivityChart({
   className,
-  title = 'Weekly Activity',
-  description = 'AI interactions over the past 7 days',
+  title = 'Agent Run Activity',
+  description = 'Based on the most recently fetched runs — sparser days reflect sample size, not necessarily no activity',
+  data,
+  isLoading = false,
 }: ActivityChartProps) {
-  const data = ACTIVITY_DATA
+  const hasData = Boolean(data && data.length > 0)
+  const chartData = data ?? []
 
-  // Calculate summary stats
-  const totalSessions = data.reduce((acc, d) => acc + d.sessions, 0)
-  const avgSuccess = Math.round(
-    data.reduce((acc, d) => acc + d.success, 0) / data.length
-  )
-  const trend = (
-    ((data[6].sessions - data[0].sessions) / data[0].sessions) *
-    100
-  ).toFixed(1)
-  const isPositive = parseFloat(trend) >= 0
+  const totalRuns = chartData.reduce((acc, d) => acc + d.runs, 0)
+  const totalCompleted = chartData.reduce((acc, d) => acc + d.completed, 0)
+  const totalFailed = chartData.reduce((acc, d) => acc + d.failed, 0)
+  const finished = totalCompleted + totalFailed
+  const successRate = finished > 0 ? Math.round((totalCompleted / finished) * 100) : null
+
+  const firstDayRuns = chartData[0]?.runs ?? 0
+  const lastDayRuns = chartData[chartData.length - 1]?.runs ?? 0
+  const trend = firstDayRuns > 0 ? (((lastDayRuns - firstDayRuns) / firstDayRuns) * 100).toFixed(1) : null
+  const isPositive = trend !== null ? parseFloat(trend) >= 0 : true
 
   return (
     <Card className={cn('relative overflow-hidden', className)}>
@@ -103,190 +104,206 @@ export function ActivityChart({
           </div>
 
           {/* Quick Stats */}
-          <div className='hidden items-center gap-4 sm:flex'>
-            <div className='text-right'>
-              <p className='text-micro uppercase text-brand-muted'>
-                Total Sessions
-              </p>
-              <p className='font-display text-lg font-bold text-brand-navy'>
-                {totalSessions.toLocaleString()}
-              </p>
-            </div>
-            <div className='h-10 w-px bg-border/50' />
-            <div className='text-right'>
-              <p className='text-micro uppercase text-brand-muted'>
-                Avg Success
-              </p>
-              <p className='font-display text-lg font-bold text-brand-navy'>
-                {avgSuccess.toLocaleString()}
-              </p>
-            </div>
-            <motion.div
-              className={cn(
-                'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
-                isPositive
-                  ? 'bg-emerald-50 text-emerald-600'
-                  : 'bg-red-50 text-red-500'
+          {hasData && (
+            <div className='hidden items-center gap-4 sm:flex'>
+              <div className='text-right'>
+                <p className='text-micro uppercase text-brand-muted'>
+                  Total Runs
+                </p>
+                <p className='font-display text-lg font-bold text-brand-navy'>
+                  {totalRuns.toLocaleString()}
+                </p>
+              </div>
+              <div className='h-10 w-px bg-border/50' />
+              <div className='text-right'>
+                <p className='text-micro uppercase text-brand-muted'>
+                  Success Rate
+                </p>
+                <p className='font-display text-lg font-bold text-brand-navy'>
+                  {successRate !== null ? `${successRate}%` : '—'}
+                </p>
+              </div>
+              {trend !== null && (
+                <motion.div
+                  className={cn(
+                    'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
+                    isPositive
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : 'bg-red-50 text-red-500'
+                  )}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  {isPositive ? (
+                    <Icons.trendingUp className='h-3 w-3' strokeWidth={2} />
+                  ) : (
+                    <Icons.trendingUp
+                      className='h-3 w-3 rotate-180'
+                      strokeWidth={2}
+                    />
+                  )}
+                  {isPositive ? '+' : ''}
+                  {trend}%
+                </motion.div>
               )}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              {isPositive ? (
-                <Icons.trendingUp className='h-3 w-3' strokeWidth={2} />
-              ) : (
-                <Icons.trendingUp
-                  className='h-3 w-3 rotate-180'
-                  strokeWidth={2}
-                />
-              )}
-              {isPositive ? '+' : ''}
-              {trend}%
-            </motion.div>
-          </div>
+            </div>
+          )}
         </div>
       </CardHeader>
 
       <CardContent className='pt-0'>
         <div className='mt-4 h-[240px] w-full'>
-          <ResponsiveContainer width='100%' height='100%'>
-            <AreaChart
-              data={data}
-              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-            >
-              <defs>
-                {/* Gradient for Sessions */}
-                <linearGradient
-                  id='gradientSessions'
-                  x1='0'
-                  y1='0'
-                  x2='0'
-                  y2='1'
-                >
-                  <stop offset='0%' stopColor='#5B8DEF' stopOpacity={0.4} />
-                  <stop offset='95%' stopColor='#5B8DEF' stopOpacity={0} />
-                </linearGradient>
-                {/* Gradient for Success */}
-                <linearGradient
-                  id='gradientSuccess'
-                  x1='0'
-                  y1='0'
-                  x2='0'
-                  y2='1'
-                >
-                  <stop offset='0%' stopColor='#7C5CE7' stopOpacity={0.3} />
-                  <stop offset='95%' stopColor='#7C5CE7' stopOpacity={0} />
-                </linearGradient>
-                {/* Gradient for AI Calls */}
-                <linearGradient id='gradientAI' x1='0' y1='0' x2='0' y2='1'>
-                  <stop offset='0%' stopColor='#141A42' stopOpacity={0.2} />
-                  <stop offset='95%' stopColor='#141A42' stopOpacity={0} />
-                </linearGradient>
-              </defs>
+          {isLoading && !hasData ? (
+            <div className='flex h-full items-center justify-center'>
+              <div className='h-10 w-10 animate-spin rounded-full border-4 border-brand-navy border-t-transparent' />
+            </div>
+          ) : !hasData ? (
+            <div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
+              No workflow runs recorded yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width='100%' height='100%'>
+              <AreaChart
+                data={chartData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  {/* Gradient for total runs */}
+                  <linearGradient
+                    id='gradientRuns'
+                    x1='0'
+                    y1='0'
+                    x2='0'
+                    y2='1'
+                  >
+                    <stop offset='0%' stopColor='#5B8DEF' stopOpacity={0.4} />
+                    <stop offset='95%' stopColor='#5B8DEF' stopOpacity={0} />
+                  </linearGradient>
+                  {/* Gradient for completed */}
+                  <linearGradient
+                    id='gradientCompleted'
+                    x1='0'
+                    y1='0'
+                    x2='0'
+                    y2='1'
+                  >
+                    <stop offset='0%' stopColor='#7C5CE7' stopOpacity={0.3} />
+                    <stop offset='95%' stopColor='#7C5CE7' stopOpacity={0} />
+                  </linearGradient>
+                  {/* Gradient for failed */}
+                  <linearGradient id='gradientFailed' x1='0' y1='0' x2='0' y2='1'>
+                    <stop offset='0%' stopColor='#EF4444' stopOpacity={0.25} />
+                    <stop offset='95%' stopColor='#EF4444' stopOpacity={0} />
+                  </linearGradient>
+                </defs>
 
-              <CartesianGrid
-                strokeDasharray='3 3'
-                stroke='rgba(20, 26, 66, 0.06)'
-                vertical={false}
-              />
+                <CartesianGrid
+                  strokeDasharray='3 3'
+                  stroke='rgba(20, 26, 66, 0.06)'
+                  vertical={false}
+                />
 
-              <XAxis
-                dataKey='name'
-                axisLine={false}
-                tickLine={false}
-                tick={{
-                  fill: '#7B8AB8',
-                  fontSize: 11,
-                  fontWeight: 500,
-                }}
-                dy={8}
-              />
+                <XAxis
+                  dataKey='name'
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fill: '#7B8AB8',
+                    fontSize: 11,
+                    fontWeight: 500,
+                  }}
+                  dy={8}
+                />
 
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{
-                  fill: '#7B8AB8',
-                  fontSize: 11,
-                }}
-                tickFormatter={(value) =>
-                  value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value
-                }
-              />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                  tick={{
+                    fill: '#7B8AB8',
+                    fontSize: 11,
+                  }}
+                  tickFormatter={(value) =>
+                    value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value
+                  }
+                />
 
-              <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} />
 
-              {/* AI Calls - Background layer */}
-              <Area
-                type='monotone'
-                dataKey='aiCalls'
-                name='AI Calls'
-                stroke='#141A42'
-                strokeWidth={1.5}
-                fill='url(#gradientAI)'
-                dot={false}
-                activeDot={{
-                  r: 4,
-                  fill: '#141A42',
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                }}
-              />
+                {/* Failed - background layer */}
+                <Area
+                  type='monotone'
+                  dataKey='failed'
+                  name='Failed'
+                  stroke='#EF4444'
+                  strokeWidth={1.5}
+                  fill='url(#gradientFailed)'
+                  dot={false}
+                  activeDot={{
+                    r: 4,
+                    fill: '#EF4444',
+                    stroke: '#fff',
+                    strokeWidth: 2,
+                  }}
+                />
 
-              {/* Success - Middle layer */}
-              <Area
-                type='monotone'
-                dataKey='success'
-                name='Success'
-                stroke='#7C5CE7'
-                strokeWidth={2}
-                fill='url(#gradientSuccess)'
-                dot={false}
-                activeDot={{
-                  r: 5,
-                  fill: '#7C5CE7',
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                }}
-              />
+                {/* Completed - middle layer */}
+                <Area
+                  type='monotone'
+                  dataKey='completed'
+                  name='Completed'
+                  stroke='#7C5CE7'
+                  strokeWidth={2}
+                  fill='url(#gradientCompleted)'
+                  dot={false}
+                  activeDot={{
+                    r: 5,
+                    fill: '#7C5CE7',
+                    stroke: '#fff',
+                    strokeWidth: 2,
+                  }}
+                />
 
-              {/* Sessions - Top layer */}
-              <Area
-                type='monotone'
-                dataKey='sessions'
-                name='Sessions'
-                stroke='#5B8DEF'
-                strokeWidth={2.5}
-                fill='url(#gradientSessions)'
-                dot={false}
-                activeDot={{
-                  r: 6,
-                  fill: '#5B8DEF',
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+                {/* Total runs - top layer */}
+                <Area
+                  type='monotone'
+                  dataKey='runs'
+                  name='Total Runs'
+                  stroke='#5B8DEF'
+                  strokeWidth={2.5}
+                  fill='url(#gradientRuns)'
+                  dot={false}
+                  activeDot={{
+                    r: 6,
+                    fill: '#5B8DEF',
+                    stroke: '#fff',
+                    strokeWidth: 2,
+                  }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Legend */}
-        <div className='mt-4 flex items-center justify-center gap-6 border-t border-border/30 pt-4'>
-          <div className='flex items-center gap-2'>
-            <div className='h-2 w-2 rounded-full bg-brand-cornflower' />
-            <span className='text-xs text-muted-foreground'>Sessions</span>
+        {hasData && (
+          <div className='mt-4 flex items-center justify-center gap-6 border-t border-border/30 pt-4'>
+            <div className='flex items-center gap-2'>
+              <div className='h-2 w-2 rounded-full bg-brand-cornflower' />
+              <span className='text-xs text-muted-foreground'>Total Runs</span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <div className='h-2 w-2 rounded-full bg-brand-purple' />
+              <span className='text-xs text-muted-foreground'>Completed</span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <div className='h-2 w-2 rounded-full bg-red-500' />
+              <span className='text-xs text-muted-foreground'>Failed</span>
+            </div>
           </div>
-          <div className='flex items-center gap-2'>
-            <div className='h-2 w-2 rounded-full bg-brand-purple' />
-            <span className='text-xs text-muted-foreground'>Success</span>
-          </div>
-          <div className='flex items-center gap-2'>
-            <div className='h-2 w-2 rounded-full bg-brand-navy' />
-            <span className='text-xs text-muted-foreground'>AI Calls</span>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )
 }
-
