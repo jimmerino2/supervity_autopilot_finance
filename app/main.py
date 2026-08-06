@@ -42,6 +42,7 @@ from .routers import (
     examples_router,
     health_router,
     items_router,
+    supervity_router,
     approval_log_router,
     approval_matrix_router,
 )
@@ -155,6 +156,9 @@ api_router.include_router(items_router)
 
 # Authorization pattern examples
 api_router.include_router(examples_router)
+
+# Supervity
+api_router.include_router(supervity_router)
 
 # Supabase tables
 api_router.include_router(approval_log_router)

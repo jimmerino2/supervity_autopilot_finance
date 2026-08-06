@@ -12,6 +12,9 @@ from .examples import router as examples_router
 from .health import router as health_router
 from .items import router as items_router
 
+# Supervity
+from .supervity import router as supervity_router
+
 # Supabase tables
 from .approval_log import router as approval_log_router
 from .approval_matrix import router as approval_matrix_router
@@ -23,6 +26,7 @@ __all__ = [
     "audit_router",
     "items_router",
     "examples_router",
+    "supervity_router",
     "approval_log_router",
     "approval_matrix_router",
 ]
