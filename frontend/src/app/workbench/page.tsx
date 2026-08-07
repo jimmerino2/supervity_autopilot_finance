@@ -68,6 +68,14 @@ const tools: Tool[] = [
     color: 'bg-gradient-to-br from-amber-500 to-orange-500',
     href: '/ai/insights',
   },
+  {
+    id: 'user-forms',
+    title: 'User Forms',
+    description: 'Review and action human-input steps paused on workflows',
+    icon: Icons.inbox,
+    color: 'bg-gradient-to-br from-sky-500 to-blue-600',
+    href: '/workbench/forms',
+  },
 ]
 
 function ToolCard({ tool, onOpen }: { tool: Tool; onOpen: (tool: Tool) => void }) {

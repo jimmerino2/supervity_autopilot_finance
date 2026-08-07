@@ -294,6 +294,84 @@ async def get_workflow_run(run_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# User Forms  (base path: /user-forms)
+#
+# Created when a workflow step is marked `is_human_input_step: true`: the
+# Temporal workflow pauses and a form record is generated for a human
+# reviewer. Submitting resumes the paused workflow via a Temporal signal.
+# ---------------------------------------------------------------------------
+
+async def get_user_forms(
+    page: int = 1,
+    limit: int = 20,
+    search: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str | None = None,
+    status: str | None = None,
+) -> dict:
+    """GET /user-forms — list human-review forms for workflows owned by the authenticated user.
+
+    status: one of pending, approved, rejected. sortBy: createdAt, updatedAt,
+    workflowName, status. sortOrder: asc, desc.
+    """
+    params = {"page": page, "limit": limit}
+    if search:
+        params["search"] = search
+    if sort_by:
+        params["sortBy"] = sort_by
+    if sort_order:
+        params["sortOrder"] = sort_order
+    if status:
+        params["status"] = status
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{SUPERVITY_BASE_URL}/user-forms", headers=headers, params=params)
+        _log_error(response)
+        response.raise_for_status()
+        return response.json()
+
+
+async def get_user_form_html(form_id: str) -> dict:
+    """GET /user-forms/:formId — the form's HTML content, for rendering in a browser/iframe.
+    Publicly accessible on Supervity's side (no auth needed), but sending our headers is harmless."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{SUPERVITY_BASE_URL}/user-forms/{form_id}", headers=headers)
+        _log_error(response)
+        response.raise_for_status()
+        return response.json()
+
+
+async def submit_user_form(activity_run_id: str, status: str, fields: dict | None = None) -> str:
+    """POST /user-forms/:activityRunId/:status — submit reviewer input and resume the
+    paused workflow. `status` must be "approve" or "reject". multipart/form-data per
+    docs.supervity.ai — reviewer-filled fields as form fields. Returns a raw HTML
+    confirmation page (not JSON), matching the rest of this endpoint's contract.
+    """
+    if status not in ("approve", "reject"):
+        raise ValueError('status must be "approve" or "reject"')
+
+    url = f"{SUPERVITY_BASE_URL}/user-forms/{activity_run_id}/{status}"
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        if fields:
+            files = {name: (None, str(value)) for name, value in fields.items()}
+            response = await client.post(url, headers=headers, files=files)
+        else:
+            # httpx silently drops the multipart Content-Type for an empty `files`
+            # dict and sends a bodyless request instead — but this endpoint only
+            # accepts multipart/form-data (same class of quirk as
+            # /workflow-runs/execute above), so build a minimal valid empty
+            # multipart body by hand for the no-fields case rather than risk it.
+            boundary = "supervityemptyformboundary"
+            body = f"--{boundary}--\r\n".encode()
+            req_headers = {**headers, "Content-Type": f"multipart/form-data; boundary={boundary}"}
+            response = await client.post(url, headers=req_headers, content=body)
+        _log_error(response)
+        response.raise_for_status()
+        return response.text
+
+
+# ---------------------------------------------------------------------------
 # Chats  (base path: /chats)
 # ---------------------------------------------------------------------------
 

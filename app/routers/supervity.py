@@ -24,6 +24,9 @@ from app.services.supervity import (
     get_workflow_runs,
     get_workflow_runs_dashboard,
     get_workflow_run,
+    get_user_forms,
+    get_user_form_html,
+    submit_user_form,
     create_chat_thread,
     list_chat_threads,
     get_chat_messages,
@@ -79,6 +82,10 @@ class ExecuteBody(BaseModel):
     workflowId: str
     inputs: dict = Field(default_factory=dict)
     envs: dict = Field(default_factory=dict)
+
+
+class SubmitFormBody(BaseModel):
+    fields: dict = Field(default_factory=dict)
 
 
 class CancelBody(BaseModel):
@@ -253,6 +260,49 @@ async def workflow_runs_dashboard(workflow_id: str):
 async def workflow_run_details(run_id: str):
     try:
         return await get_workflow_run(run_id)
+    except Exception as e:
+        _raise_from(e)
+
+
+# ---------------------------------------------------------------------------
+# User Forms
+# ---------------------------------------------------------------------------
+
+@router.get("/user-forms")
+async def list_user_forms(
+    page: int = 1,
+    limit: int = 20,
+    search: Optional[str] = None,
+    sortBy: Optional[str] = None,
+    sortOrder: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    try:
+        return await get_user_forms(
+            page=page, limit=limit, search=search, sort_by=sortBy, sort_order=sortOrder, status=status
+        )
+    except Exception as e:
+        _raise_from(e)
+
+
+@router.get("/user-forms/{form_id}")
+async def get_form(form_id: str):
+    try:
+        return await get_user_form_html(form_id)
+    except Exception as e:
+        _raise_from(e)
+
+
+@router.post("/user-forms/{activity_run_id}/{status}")
+async def submit_form(activity_run_id: str, status: str, body: SubmitFormBody):
+    """Wraps Supervity's raw HTML confirmation page as {"html": ...}, matching the
+    shape GET /user-forms/{form_id} already uses — keeps every endpoint on this
+    router returning JSON so the frontend can use one fetch client throughout."""
+    if status not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail='status must be "approve" or "reject"')
+    try:
+        html = await submit_user_form(activity_run_id, status, body.fields)
+        return {"html": html}
     except Exception as e:
         _raise_from(e)
 
