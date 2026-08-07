@@ -1,124 +1,116 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { apiClient } from '@/lib/api-client'
+import { Card, CardContent } from '@/components/ui/card'
+import { CardWatermark } from '@/components/ui/card-watermark'
 import { Icons } from '@/components/ui/icons'
+import { OrchestratorCard, type OrchestratorStatus } from '@/components/workbench/OrchestratorCard'
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 }
-
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 }
 
-interface Tool {
-  id: string
-  title: string
-  description: string
-  icon: React.ElementType
-  color: string
-  href: string
-}
-
-// Workbench-only tools — modules that already have their own sidebar entry
-// (Dashboard, AI Policies, AI Insights) aren't duplicated here.
-const tools: Tool[] = [
-  {
-    id: 'ai-assistant',
-    title: 'AI Assistant',
-    description: 'Chat with your AI assistant for help with tasks',
-    icon: Icons.sparkles,
-    color: 'bg-gradient-to-br from-brand-navy to-brand-purple',
-    href: '/workbench/ai-assistant',
-  },
-  {
-    id: 'user-forms',
-    title: 'User Forms',
-    description: 'Review and action human-input steps paused on workflows',
-    icon: Icons.inbox,
-    color: 'bg-gradient-to-br from-sky-500 to-blue-600',
-    href: '/workbench/forms',
-  },
-  {
-    id: 'orchestrator',
-    title: 'Invoice Orchestrator',
-    description: 'Run the master orchestrator to validate parked invoices',
-    icon: Icons.zap,
-    color: 'bg-gradient-to-br from-amber-500 to-orange-600',
-    href: '/workbench/orchestrator',
-  },
-]
-
-function ToolCard({ tool, onOpen }: { tool: Tool; onOpen: (tool: Tool) => void }) {
-  const Icon = tool.icon
-
-  return (
-    <motion.div variants={itemVariants}>
-      <Card className='h-full cursor-pointer transition-all duration-300'>
-        <CardHeader>
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl text-white ${tool.color}`}
-          >
-            <Icon className='h-6 w-6' strokeWidth={1.5} />
-          </div>
-          <CardTitle className='mt-4'>{tool.title}</CardTitle>
-          <CardDescription>{tool.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button className='w-full' onClick={() => onOpen(tool)}>
-            Open
-            <Icons.arrowRight className='ml-2 h-4 w-4' />
-          </Button>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
+interface InvoiceCounts {
+  parked: number
+  pendingApproval: number
 }
 
 export default function WorkbenchPage() {
-  const router = useRouter()
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true)
+  const [invoiceCounts, setInvoiceCounts] = useState<InvoiceCounts | null>(null)
+  const [orchestrators, setOrchestrators] = useState<OrchestratorStatus[]>([])
+  const [initialError, setInitialError] = useState<string | null>(null)
 
-  const handleOpenTool = (tool: Tool) => {
-    router.push(tool.href)
+  const loadStatus = useCallback(async () => {
+    try {
+      const [countsData, statusData] = await Promise.all([
+        apiClient.get<InvoiceCounts>('/api/orchestrator/invoice-counts'),
+        apiClient.get<{ orchestrators: OrchestratorStatus[] }>('/api/orchestrator/status'),
+      ])
+      setInvoiceCounts(countsData)
+      setOrchestrators(statusData.orchestrators)
+      setInitialError(null)
+    } catch (err) {
+      setInitialError(err instanceof Error ? err.message : 'Unable to load orchestrator status')
+    }
+  }, [])
+
+  useEffect(() => {
+    loadStatus().finally(() => setIsLoadingInitial(false))
+  }, [loadStatus])
+
+  // Per spec: while the initial state is loading, show nothing but a loading message.
+  if (isLoadingInitial) {
+    return (
+      <div className='flex h-[60vh] items-center justify-center'>
+        <div className='flex flex-col items-center gap-3'>
+          <Icons.loader className='h-8 w-8 animate-spin text-brand-cornflower' />
+          <p className='text-sm text-muted-foreground'>Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <motion.div
-      className='space-y-8'
-      variants={containerVariants}
-      initial='hidden'
-      animate='visible'
-    >
-      {/* Header */}
+    <motion.div className='space-y-6' variants={containerVariants} initial='hidden' animate='visible'>
       <motion.div variants={itemVariants}>
-        <h1 className='text-display-3 font-bold tracking-tight text-brand-navy'>
-          Workbench
+        <h1 className='text-display-3 font-bold tracking-tight text-brand-navy lg:text-display-2'>
+          Invoice Orchestrators
         </h1>
         <p className='mt-2 text-lg text-muted-foreground'>
-          Jump into your AI tools and dashboards.
+          Master orchestrators for the invoice pipeline — scanning inboxes and validating parked invoices.
         </p>
       </motion.div>
 
-      {/* Tools Grid */}
-      <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
-        {tools.map((tool) => (
-          <ToolCard key={tool.id} tool={tool} onOpen={handleOpenTool} />
+      {initialError && (
+        <motion.div
+          variants={itemVariants}
+          className='rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700'
+        >
+          {initialError}
+        </motion.div>
+      )}
+
+      <motion.div variants={itemVariants} className='grid gap-4 sm:grid-cols-2'>
+        <Card className='relative overflow-hidden'>
+          <CardWatermark opacity={2} scale={0.8} />
+          <CardContent className='relative z-10 flex items-center gap-4 py-6'>
+            <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100'>
+              <Icons.fileText className='h-6 w-6 text-amber-600' strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className='text-2xl font-bold text-brand-navy'>{invoiceCounts?.parked ?? '—'}</p>
+              <p className='text-sm text-muted-foreground'>Parked Invoices</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className='relative overflow-hidden'>
+          <CardWatermark opacity={2} scale={0.8} />
+          <CardContent className='relative z-10 flex items-center gap-4 py-6'>
+            <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100'>
+              <Icons.clock className='h-6 w-6 text-blue-600' strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className='text-2xl font-bold text-brand-navy'>{invoiceCounts?.pendingApproval ?? '—'}</p>
+              <p className='text-sm text-muted-foreground'>Pending Approval</p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants} className='grid gap-6 lg:grid-cols-2'>
+        {orchestrators.map((orch) => (
+          <OrchestratorCard key={orch.key} status={orch} onRunComplete={loadStatus} />
         ))}
-      </div>
+      </motion.div>
     </motion.div>
   )
 }

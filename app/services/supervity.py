@@ -372,6 +372,27 @@ async def submit_user_form(activity_run_id: str, status: str, fields: dict | Non
 
 
 # ---------------------------------------------------------------------------
+# Schedules  (base path: /schedules)
+# ---------------------------------------------------------------------------
+
+async def get_schedules(page: int = 1, limit: int = 20, search: str | None = None) -> dict:
+    """GET /schedules — list workflow schedules for the authenticated user's active org.
+
+    Verified live: works with just Authorization + x-source (the docs list an
+    x-active-org header as required, but it isn't necessary in practice).
+    """
+    params = {"page": page, "limit": limit}
+    if search:
+        params["search"] = search
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{SUPERVITY_BASE_URL}/schedules", headers=headers, params=params)
+        _log_error(response)
+        response.raise_for_status()
+        return response.json()
+
+
+# ---------------------------------------------------------------------------
 # Chats  (base path: /chats)
 # ---------------------------------------------------------------------------
 

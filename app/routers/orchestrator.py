@@ -1,46 +1,124 @@
 # app/routers/orchestrator.py
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import httpx
 
 from app.core.supabase import supabase
-from app.services.supervity import execute_workflow_stream
+from app.services.supervity import execute_workflow_stream, get_workflow_runs, get_schedules
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orchestrator", tags=["Orchestrator"])
 
-# The "Invoice Orchestrator" operator on Supervity: fetches the first 100
-# 'parked' invoices from Supabase, runs all 5 validation subworkflows against
-# them in parallel, and aggregates the results into a consolidated report.
-# Takes no inputs.
-INVOICE_ORCHESTRATOR_WORKFLOW_ID = "019fdc8c-fb68-7000-815c-778caf0763b2"
+# Run statuses that mean a run is still in flight — used to block starting
+# another run of the same operator until the current one finishes.
+_ACTIVE_STATUSES = {"running", "waiting", "scheduled"}
+
+# The two master orchestrators surfaced in the Workbench, each pinned to a
+# specific Supervity workflow.
+ORCHESTRATORS = {
+    "outlook-extraction": {
+        "workflow_id": "019fd177-01cf-7001-9b7a-7a2408784ac4",
+        "name": "Invoice Outlook Extraction",
+        "description": "Scans Outlook for invoice emails and logs new invoices into Supabase as parked.",
+        "inputs": {},
+    },
+    "invoice-pending-open": {
+        "workflow_id": "019fdc8c-fb68-7000-815c-778caf0763b2",
+        "name": "Invoice Pending/Open",
+        "description": "Validates parked invoices and updates them to open or pending approval.",
+        "inputs": {"submitted_by": "Supervity Auto"},
+    },
+}
 
 
-@router.get("/parked-count")
-async def get_parked_invoice_count():
-    """Count of invoices currently sitting in 'parked' status — the pool this
-    orchestrator run will pick up (capped at the first 100 by the workflow)."""
+def _get_orchestrator(key: str) -> dict:
+    orchestrator = ORCHESTRATORS.get(key)
+    if not orchestrator:
+        raise HTTPException(status_code=404, detail=f"Unknown orchestrator '{key}'")
+    return orchestrator
+
+
+def _count_invoices_with_status(status: str) -> int:
     response = (
         supabase.table("invoices")
         .select("invoice_doc_no", count="exact")
-        .eq("status", "parked")
+        .eq("status", status)
         .execute()
     )
-    return {"count": response.count or 0}
+    return response.count or 0
 
 
-@router.post("/run/stream")
-async def run_orchestrator_stream():
-    """SSE-streamed execution of the Invoice Orchestrator — proxies Supervity's
-    stream back to the caller. Can run long: up to 100 invoices across 5
-    parallel validation subworkflows."""
+@router.get("/invoice-counts")
+async def get_invoice_counts():
+    """Counts by status relevant to the invoice orchestrators: 'parked' is the
+    pool the Invoice Pending/Open orchestrator picks up (capped at the first
+    100); 'pending approval' is what it produces for invoices with errors."""
+    return {
+        "parked": _count_invoices_with_status("parked"),
+        "pendingApproval": _count_invoices_with_status("pending approval"),
+    }
+
+
+@router.get("/status")
+async def get_orchestrators_status():
+    """For each known orchestrator: whether a run is currently in flight
+    (gates the Run button) and its configured schedule, if any."""
+    try:
+        schedules_response = await get_schedules(limit=100)
+    except Exception as e:
+        log.warning(f"Unable to load schedules: {e}")
+        schedules_response = {"schedules": []}
+    schedules_by_workflow = {s["workflowId"]: s for s in schedules_response.get("schedules", [])}
+
+    result = []
+    for key, orchestrator in ORCHESTRATORS.items():
+        workflow_id = orchestrator["workflow_id"]
+
+        try:
+            runs_response = await get_workflow_runs(workflow_id=workflow_id, page=1, limit=1)
+            latest_run = (runs_response.get("workflowRuns") or [None])[0]
+        except Exception as e:
+            log.warning(f"Unable to load latest run for {workflow_id}: {e}")
+            latest_run = None
+
+        is_active = bool(latest_run and latest_run.get("status") in _ACTIVE_STATUSES)
+        schedule = schedules_by_workflow.get(workflow_id)
+
+        result.append(
+            {
+                "key": key,
+                "workflowId": workflow_id,
+                "name": orchestrator["name"],
+                "description": orchestrator["description"],
+                "isActive": is_active,
+                "latestRun": latest_run,
+                "schedule": {
+                    "description": schedule.get("description"),
+                    "isPaused": schedule.get("isPaused"),
+                    "timezone": (schedule.get("definition") or {}).get("timezone"),
+                }
+                if schedule
+                else None,
+            }
+        )
+
+    return {"orchestrators": result}
+
+
+@router.post("/{key}/run/stream")
+async def run_orchestrator_stream(key: str):
+    """SSE-streamed execution of the given orchestrator — proxies Supervity's
+    stream back to the caller."""
+    orchestrator = _get_orchestrator(key)
 
     async def event_generator():
         try:
-            async for line in execute_workflow_stream(INVOICE_ORCHESTRATOR_WORKFLOW_ID, inputs={}, envs={}):
+            async for line in execute_workflow_stream(
+                orchestrator["workflow_id"], inputs=orchestrator["inputs"], envs={}
+            ):
                 yield f"{line}\n"
         except httpx.HTTPStatusError as e:
             yield f"event: error\ndata: {e.response.text}\n\n"

@@ -284,15 +284,9 @@ export default function AIAssistantPage() {
 
   return (
     <motion.div className='flex h-[calc(100vh-7rem)] flex-col space-y-4' variants={containerVariants} initial='hidden' animate='visible'>
-      <motion.div variants={itemVariants} className='flex items-center justify-between'>
-        <div>
-          <p className='text-sm uppercase tracking-[0.2em] text-brand-cornflower'>Workbench</p>
-          <h1 className='text-display-4 font-bold text-brand-navy'>AI Assistant</h1>
-        </div>
-        <Button variant='outline' size='sm' onClick={() => router.push('/workbench')} className='gap-2'>
-          <Icons.arrowLeft className='h-4 w-4' />
-          Back to Workbench
-        </Button>
+      <motion.div variants={itemVariants}>
+        <p className='text-sm uppercase tracking-[0.2em] text-brand-cornflower'>AI Intelligence</p>
+        <h1 className='text-display-4 font-bold text-brand-navy'>AI Assistant</h1>
       </motion.div>
 
       <motion.div variants={itemVariants} className='flex min-h-0 flex-1 gap-4'>
