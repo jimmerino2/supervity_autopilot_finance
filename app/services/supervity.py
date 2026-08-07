@@ -166,25 +166,37 @@ async def delete_schedule(workflow_id: str) -> dict:
 # Workflow Runs  (base path: /workflow-runs)
 # ---------------------------------------------------------------------------
 
+def _execute_fields(workflow_id: str, inputs: dict | None, envs: dict | None) -> dict:
+    """Build the multipart fields for /workflow-runs/execute[/stream].
+
+    NOTE: this endpoint only accepts multipart/form-data, and `inputs`/`envs`
+    must be sent as bracket-notation nested fields (e.g. `inputs[key]=value`),
+    not as a JSON body or a JSON-encoded string field. Verified against the
+    live API:
+      - JSON body (`Content-Type: application/json`)            -> 500 Internal Server Error
+      - multipart with inputs/envs as JSON-encoded string fields -> 400 "expected record, received string"
+      - multipart with inputs[key]=value / envs[key]=value       -> 200 OK
+    """
+    fields = {"workflowId": workflow_id}
+    for key, value in (inputs or {}).items():
+        fields[f"inputs[{key}]"] = str(value)
+    for key, value in (envs or {}).items():
+        fields[f"envs[{key}]"] = str(value)
+    return fields
+
+
 async def execute_workflow(workflow_id: str, inputs: dict | None = None, envs: dict | None = None) -> dict:
     """POST /workflow-runs/execute — execute a workflow (blocking).
 
     Waits for completion before returning. Can be long-running — prefer
     execute_workflow_stream() for UI-facing calls.
-
-    NOTE: the API expects `inputs`/`envs` as native JSON objects, not
-    JSON-encoded strings inside a form body — sending them as strings (form or
-    multipart) fails schema validation with "expected record, received string".
     """
-    payload = {
-        "workflowId": workflow_id,
-        "inputs": inputs or {},
-        "envs": envs or {},
-    }
+    fields = _execute_fields(workflow_id, inputs, envs)
+    files = {name: (None, value) for name, value in fields.items()}
 
     async with httpx.AsyncClient(timeout=300) as client:  # long timeout: blocking execution
         response = await client.post(
-            f"{SUPERVITY_BASE_URL}/workflow-runs/execute", headers=headers, json=payload
+            f"{SUPERVITY_BASE_URL}/workflow-runs/execute", headers=headers, files=files
         )
         _log_error(response)
         response.raise_for_status()
@@ -197,15 +209,12 @@ async def execute_workflow_stream(workflow_id: str, inputs: dict | None = None, 
     Async generator yielding raw SSE lines. Events include: ping, activity-run,
     workflow-run, thinking, result, error.
     """
-    payload = {
-        "workflowId": workflow_id,
-        "inputs": inputs or {},
-        "envs": envs or {},
-    }
+    fields = _execute_fields(workflow_id, inputs, envs)
+    files = {name: (None, value) for name, value in fields.items()}
 
     async with httpx.AsyncClient(timeout=None) as client:
         async with client.stream(
-            "POST", f"{SUPERVITY_BASE_URL}/workflow-runs/execute/stream", headers=headers, json=payload
+            "POST", f"{SUPERVITY_BASE_URL}/workflow-runs/execute/stream", headers=headers, files=files
         ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():

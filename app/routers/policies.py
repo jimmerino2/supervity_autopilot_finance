@@ -3,7 +3,7 @@ import json
 import logging
 
 from fastapi import APIRouter, HTTPException, Request
-from app.core.supabase import supabase
+from app.core.supabase import supabase, SUPABASE_URL, SUPABASE_KEY, SUPABASE_USERNAME, SUPABASE_PASSWORD
 from app.services.supervity import execute_workflow
 
 log = logging.getLogger(__name__)
@@ -16,12 +16,26 @@ router = APIRouter(prefix="/policies", tags=["Policies"])
 # a conflict was found.
 CONFLICT_CHECKER_WORKFLOW_ID = "019fd7fe-adc0-7000-b551-064dec108f7b"
 
+# Passed as runtime `envs` on execute so the workflow's Supabase step
+# authenticates with this app's credentials rather than whatever was baked
+# into the workflow definition on Supervity at creation time. Names on the
+# right are what the workflow's fetch_policies step reads via os.environ.get().
+CONFLICT_CHECKER_ENVS = {
+    "SUPABASE_URL": SUPABASE_URL,
+    "SUPABASE_ANON_KEY": SUPABASE_KEY,
+    "SUPABASE_EMAIL": SUPABASE_USERNAME,
+    "SUPABASE_PASSWORD": SUPABASE_PASSWORD,
+}
+
 
 def _extract_conflict_result(execute_response: dict) -> dict:
-    """The blocking /workflow-runs/execute response shape isn't documented, so
-    try the plausible spots: a step's stdout (JSON string) inside activityRuns,
-    or a top-level/workflowRun-nested status+message."""
-    activity_runs = execute_response.get("activityRuns")
+    """Parse {"status": bool, "message": str} out of a blocking /workflow-runs/execute
+    response. The real shape (verified live) is:
+    {"success": true, "workflowRun": {"activityRuns": [{"outputs": {"output": "<json str>"}}]}}
+    — the last activity run's stdout is the evaluate_conflict step's JSON print.
+    Falls back to a few other plausible spots in case the shape drifts."""
+    workflow_run = execute_response.get("workflowRun")
+    activity_runs = (workflow_run or {}).get("activityRuns") or execute_response.get("activityRuns")
     if isinstance(activity_runs, list) and activity_runs:
         output_str = (activity_runs[-1].get("outputs") or {}).get("output")
         if output_str:
@@ -35,7 +49,6 @@ def _extract_conflict_result(execute_response: dict) -> dict:
     if "status" in execute_response and "message" in execute_response:
         return {"status": bool(execute_response["status"]), "message": str(execute_response["message"])}
 
-    workflow_run = execute_response.get("workflowRun")
     if isinstance(workflow_run, dict):
         for key in ("output", "result"):
             val = workflow_run.get(key)
@@ -60,6 +73,7 @@ async def check_policy_conflict(payload: dict):
         execute_response = await execute_workflow(
             CONFLICT_CHECKER_WORKFLOW_ID,
             inputs={"new_policy_description": description},
+            envs=CONFLICT_CHECKER_ENVS,
         )
         return _extract_conflict_result(execute_response)
     except Exception as e:
