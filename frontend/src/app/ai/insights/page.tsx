@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
+import { postSSE } from '@/lib/sse-stream'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { CardWatermark } from '@/components/ui/card-watermark'
@@ -23,25 +24,78 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
+interface LogEntry {
+  id: string
+  text: string
+}
+
 export default function AIInsightsPage() {
   const [insights, setInsights] = useState<Insight[]>([])
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [hasRun, setHasRun] = useState(false)
+
+  const loadInsights = useCallback(async () => {
+    const data = await apiClient.get<Insight[]>('/api/insights')
+    setInsights(data)
+  }, [])
+
+  useEffect(() => {
+    loadInsights()
+      .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load insights'))
+      .finally(() => setIsLoadingInitial(false))
+  }, [loadInsights])
 
   const handleAnalyze = useCallback(async () => {
     setIsAnalyzing(true)
     setError(null)
+    setLogEntries([])
+
+    let entryCount = 0
+    const pushEntry = (text: string) => {
+      entryCount += 1
+      setLogEntries((prev) => [...prev, { id: `${Date.now()}-${entryCount}`, text }])
+    }
+
     try {
-      const result = await apiClient.post<{ insights: Insight[] }>('/api/insights/generate')
-      setInsights(result.insights)
-      setHasRun(true)
+      await postSSE('/api/insights/generate/stream', (event, data) => {
+        switch (event) {
+          case 'ping':
+            return
+          case 'error': {
+            const payload = data as { error?: string; content?: string }
+            setError(payload?.error || payload?.content || 'Unable to generate insights')
+            return
+          }
+          case 'thinking': {
+            const content = (data as { content?: string })?.content
+            if (content) pushEntry(content)
+            return
+          }
+          case 'activity-run': {
+            const c = (data as { content?: { stepName?: string; status?: string } })?.content
+            if (c?.stepName) pushEntry(`${c.stepName} — ${c.status}`)
+            return
+          }
+          case 'workflow-run': {
+            const c = (data as { content?: { status?: string } })?.content
+            if (c?.status) pushEntry(`Workflow ${c.status}`)
+            return
+          }
+          default:
+            return
+        }
+      })
+      // Insights are persisted server-side as they're generated — the DB is
+      // the source of truth, so refetch rather than trusting the stream directly.
+      await loadInsights()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to generate insights')
     } finally {
       setIsAnalyzing(false)
     }
-  }, [])
+  }, [loadInsights])
 
   const criticalCount = insights.filter((i) => i.type === 'critical').length
   const warningCount = insights.filter((i) => i.type === 'warning').length
@@ -83,7 +137,7 @@ export default function AIInsightsPage() {
       </motion.div>
 
       {/* Stats Cards */}
-      {hasRun && (
+      {!isLoadingInitial && insights.length > 0 && (
         <motion.div variants={itemVariants} className="grid gap-4 sm:grid-cols-2">
           <Card className="relative overflow-hidden">
             <CardWatermark opacity={2} scale={0.8} />
@@ -113,6 +167,36 @@ export default function AIInsightsPage() {
         </motion.div>
       )}
 
+      {/* Live run log */}
+      {isAnalyzing && (
+        <motion.div variants={itemVariants}>
+          <Card className="relative overflow-hidden">
+            <CardWatermark opacity={2} scale={1} />
+            <CardHeader className="relative z-10">
+              <CardTitle className="flex items-center gap-2">
+                <Icons.activity className="h-5 w-5 text-brand-cornflower" />
+                Run Progress
+              </CardTitle>
+              <CardDescription>Live steps streamed from the insights workflow.</CardDescription>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-border bg-muted/20 p-4">
+                {logEntries.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Starting...</p>
+                ) : (
+                  logEntries.map((entry) => (
+                    <div key={entry.id} className="flex items-start gap-2 text-sm">
+                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-cornflower" />
+                      <span className="text-muted-foreground">{entry.text}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Insights */}
       <motion.div variants={itemVariants}>
         <Card className="relative overflow-hidden">
@@ -120,14 +204,14 @@ export default function AIInsightsPage() {
           <CardHeader className="relative z-10">
             <CardTitle>Invoice Insights</CardTitle>
             <CardDescription>
-              {hasRun
-                ? `${insights.length} insight${insights.length === 1 ? '' : 's'} generated from your invoice data.`
+              {insights.length > 0
+                ? `${insights.length} insight${insights.length === 1 ? '' : 's'} recorded.`
                 : 'Run an analysis to scan your invoices for anomalies and risks.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="relative z-10 space-y-4">
             <AnimatePresence mode="wait">
-              {isAnalyzing ? (
+              {isLoadingInitial ? (
                 <motion.div
                   key="loading"
                   initial={{ opacity: 0 }}
@@ -136,9 +220,6 @@ export default function AIInsightsPage() {
                   className="flex flex-col items-center justify-center py-12 text-center"
                 >
                   <Icons.loader className="h-8 w-8 animate-spin text-brand-cornflower" />
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    Scanning invoices and generating insights — this can take up to a minute.
-                  </p>
                 </motion.div>
               ) : error ? (
                 <motion.div
@@ -154,7 +235,7 @@ export default function AIInsightsPage() {
                     <p className="mt-0.5">{error}</p>
                   </div>
                 </motion.div>
-              ) : !hasRun ? (
+              ) : insights.length === 0 ? (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
@@ -184,23 +265,10 @@ export default function AIInsightsPage() {
                     Generate Insights
                   </Button>
                 </motion.div>
-              ) : insights.length === 0 ? (
-                <motion.div
-                  key="none-found"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center py-12 text-center"
-                >
-                  <Icons.checkCircle className="h-8 w-8 text-emerald-500" strokeWidth={1.5} />
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    No issues found in your invoice data.
-                  </p>
-                </motion.div>
               ) : (
                 <motion.div key="results" className="space-y-4">
-                  {insights.map((insight, idx) => (
-                    <InsightCard key={idx} insight={insight} />
+                  {insights.map((insight) => (
+                    <InsightCard key={insight.id} insight={insight} />
                   ))}
                 </motion.div>
               )}

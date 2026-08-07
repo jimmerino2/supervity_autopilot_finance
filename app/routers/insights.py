@@ -1,54 +1,49 @@
 # app/routers/insights.py
-import json
 import logging
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+import httpx
 
-from app.services.supervity import execute_workflow
+from app.core.supabase import supabase
+from app.services.supervity import execute_workflow_stream
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/insights", tags=["Insights"])
 
 # The "Insights for Invoices" operator on Supervity: scans the 'invoices' table
-# in Supabase and generates up to 5 structured insights via AI. Takes no inputs;
-# its Supabase credentials are baked into the workflow definition on Supervity.
+# in Supabase, generates structured insights via AI, and — as its own final
+# step — writes them directly into the 'insights' Supabase table. Takes no
+# inputs; its Supabase credentials are baked into the workflow definition on
+# Supervity. Persistence happens workflow-side, so this router only proxies
+# the run and reads back whatever the workflow saved.
 INSIGHTS_WORKFLOW_ID = "019fd81f-d403-7000-9889-ea9235e8454a"
 
 
-def _extract_insights(execute_response: dict) -> list[dict]:
-    """Pull the insights list out of a blocking /workflow-runs/execute response.
-
-    Verified live shape:
-    {"success": true, "workflowRun": {"activityRuns": [{"stepId": "generate_insights",
-      "outputs": {"output": "{\"insights\": [{\"type\": \"critical\"|\"warning\",
-      \"details\": str, \"recommendation\": str}, ...]}"}}]}}
-    """
-    activity_runs = (execute_response.get("workflowRun") or {}).get("activityRuns") or []
-    if not activity_runs:
-        raise ValueError("No activity runs in workflow response")
-
-    output_str = (activity_runs[-1].get("outputs") or {}).get("output")
-    if not output_str:
-        raise ValueError("No output on the final activity run")
-
-    parsed = json.loads(output_str)
-    insights = parsed.get("insights")
-    if not isinstance(insights, list):
-        raise ValueError("Response did not contain an 'insights' list")
-    return insights
-
-
-@router.post("/generate")
-async def generate_insights():
-    """Run the Insights for Invoices workflow and return its findings.
-
-    Blocking — the workflow queries Supabase and runs an LLM pass, typically
-    takes 20-40s.
-    """
+@router.get("/")
+async def list_insights():
+    """List all persisted insights, newest first."""
     try:
-        execute_response = await execute_workflow(INSIGHTS_WORKFLOW_ID)
-        return {"insights": _extract_insights(execute_response)}
+        response = supabase.table("insights").select("*").order("created_at", desc=True).execute()
+        return response.data
     except Exception as e:
-        log.warning(f"Insights generation failed: {e}")
-        raise HTTPException(status_code=502, detail=f"Insights generation unavailable: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/generate/stream")
+async def generate_insights_stream():
+    """SSE-streamed execution of the Insights for Invoices workflow — proxies
+    Supervity's stream back to the caller. The workflow itself persists the
+    generated insights into the 'insights' table as its last step; the
+    frontend re-fetches GET /insights afterward rather than relying on the
+    stream payload directly."""
+
+    async def event_generator():
+        try:
+            async for line in execute_workflow_stream(INSIGHTS_WORKFLOW_ID):
+                yield f"{line}\n"
+        except httpx.HTTPStatusError as e:
+            yield f"event: error\ndata: {e.response.text}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

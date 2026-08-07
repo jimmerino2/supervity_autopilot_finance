@@ -22,5 +22,5 @@ export type { RuleFormData, RuleAnalysis, RuleConflict, RuleOverride } from './p
 
 // Insight Components
 export { InsightCard } from './insights/InsightCard'
-export type { Insight, InsightType } from './insights/InsightCard'
+export type { Insight } from './insights/InsightCard'
 

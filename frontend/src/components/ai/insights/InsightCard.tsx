@@ -3,12 +3,13 @@
 import { cn } from '@/lib/utils'
 import { Icons } from '@/components/ui/icons'
 
-// Matches the "Insight" Pydantic model the "Insights for Invoices" workflow
-// (Supervity workflow 019fd81f-d403-7000-9889-ea9235e8454a) returns.
-export type InsightType = 'critical' | 'warning'
-
+// Mirrors a row in the Supabase `insights` table, populated by the
+// "Insights for Invoices" workflow (Supervity workflow
+// 019fd81f-d403-7000-9889-ea9235e8454a).
 export interface Insight {
-  type: InsightType
+  id: number
+  created_at: string
+  type: string
   details: string
   recommendation: string
 }
@@ -17,15 +18,18 @@ interface InsightCardProps {
   insight: Insight
 }
 
-const typeConfig: Record<InsightType, {
-  label: string
-  icon: typeof Icons.alertCircle
-  bg: string
-  border: string
-  iconBg: string
-  iconColor: string
-  badge: string
-}> = {
+const typeConfig: Record<
+  string,
+  {
+    label: string
+    icon: typeof Icons.alertCircle
+    bg: string
+    border: string
+    iconBg: string
+    iconColor: string
+    badge: string
+  }
+> = {
   critical: {
     label: 'Critical',
     icon: Icons.alertCircle,
@@ -46,32 +50,41 @@ const typeConfig: Record<InsightType, {
   },
 }
 
+const fallbackConfig = {
+  label: 'Info',
+  icon: Icons.info,
+  bg: 'bg-slate-50',
+  border: 'border-slate-200',
+  iconBg: 'bg-slate-100',
+  iconColor: 'text-slate-600',
+  badge: 'bg-slate-100 text-slate-700',
+}
+
+function formatDate(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 export function InsightCard({ insight }: InsightCardProps) {
-  const config = typeConfig[insight.type] || typeConfig.warning
+  const config = typeConfig[insight.type.toLowerCase()] || fallbackConfig
   const Icon = config.icon
+  const date = formatDate(insight.created_at)
 
   return (
-    <div className={cn(
-      'rounded-xl border p-4',
-      'transition-all duration-200 hover:shadow-soft',
-      config.bg,
-      config.border
-    )}>
+    <div className={cn('rounded-xl border p-4', 'transition-all duration-200 hover:shadow-soft', config.bg, config.border)}>
       <div className="flex gap-4">
-        <div className={cn(
-          'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg',
-          config.iconBg
-        )}>
+        <div className={cn('flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg', config.iconBg)}>
           <Icon className={cn('h-5 w-5', config.iconColor)} strokeWidth={1.5} />
         </div>
 
         <div className="flex-1 min-w-0">
-          <span className={cn(
-            'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
-            config.badge
-          )}>
-            {config.label}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase', config.badge)}>
+              {config.label}
+            </span>
+            {date && <span className="text-xs text-muted-foreground">{date}</span>}
+          </div>
 
           <p className="mt-2 text-sm text-foreground">{insight.details}</p>
 
