@@ -23,11 +23,9 @@ from .vendor import router as vendor_router
 
 # New Supabase read/CRUD modules
 from .company import router as company_router
-from .email_log import router as email_log_router
 from .fx_rate import router as fx_rate_router
 from .gl_account import router as gl_account_router
 from .goods_receipt import router as goods_receipt_router
-from .invoices_log import router as invoices_log_router
 from .price_condition import router as price_condition_router
 from .purchase_order import router as purchase_order_router
 from .purchase_order_line import router as purchase_order_line_router
@@ -48,11 +46,9 @@ __all__ = [
     "invoice_router",
     "vendor_router",
     "company_router",
-    "email_log_router",
     "fx_rate_router",
     "gl_account_router",
     "goods_receipt_router",
-    "invoices_log_router",
     "price_condition_router",
     "purchase_order_router",
     "purchase_order_line_router",

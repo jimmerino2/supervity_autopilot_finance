@@ -78,8 +78,6 @@ const navItems: NavSection[] = [
     items: [
       { href: '/admin/purchase-orders', label: 'Purchase Orders', icon: Icons.folder },
       { href: '/admin/goods-receipts', label: 'Goods Receipts', icon: Icons.archive },
-      { href: '/admin/invoices-log', label: 'Invoice Intake Log', icon: Icons.fileText },
-      { href: '/admin/email-log', label: 'Email Log', icon: Icons.mail },
     ],
   },
   {
