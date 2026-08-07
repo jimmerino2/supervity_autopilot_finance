@@ -20,23 +20,11 @@ export interface InvoiceRecord {
 interface InvoicesTableProps {
   rows: InvoiceRecord[]
   onView: (invoice: InvoiceRecord) => void
-  onStatusChange: (invoice: InvoiceRecord, nextStatus: string) => void
-  /** The signed-in approver's approval_matrix range. Null while unknown/loading. */
-  approverRange: { min: number; max: number } | null
-}
-
-/** Some seeded invoice amounts use a comma decimal separator (e.g. '327845,70'). */
-export function parseAmount(value: unknown): number | null {
-  if (value == null) return null
-  const asNumber = Number(value)
-  if (!Number.isNaN(asNumber)) return asNumber
-  const commaSwapped = Number(String(value).replace(',', '.'))
-  return Number.isNaN(commaSwapped) ? null : commaSwapped
 }
 
 type SortKey = 'invoice_doc_no' | 'vendor_invoice_no' | 'status' | 'vendor_name' | 'amount'
 
-export function InvoicesTable({ rows, onView, onStatusChange, approverRange }: InvoicesTableProps) {
+export function InvoicesTable({ rows, onView }: InvoicesTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('invoice_doc_no')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [search, setSearch] = useState('')
@@ -146,12 +134,6 @@ export function InvoicesTable({ rows, onView, onStatusChange, approverRange }: I
           </thead>
           <tbody className='divide-y divide-border/60 bg-white'>
             {sortedRows.map((row) => {
-              const nextStatuses = row.status?.toLowerCase() === 'pending approval'
-                ? ['open', 'blocked']
-                : row.status?.toLowerCase() === 'open'
-                  ? ['paid', 'cancelled']
-                  : []
-
               return (
                 <tr key={row.invoice_doc_no} className='hover:bg-slate-50'>
                   <td className='px-4 py-3 font-medium'>{row.invoice_doc_no}</td>
@@ -171,38 +153,6 @@ export function InvoicesTable({ rows, onView, onStatusChange, approverRange }: I
                         <Icons.eye className='mr-1 h-4 w-4' />
                         View
                       </Button>
-                      {nextStatuses.length > 0 && (
-                        <div className='flex gap-1'>
-                          {nextStatuses.map((status) => {
-                            const rowAmount = parseAmount(row.amount)
-                            const outOfRange =
-                              status === 'paid' &&
-                              (!approverRange ||
-                                rowAmount == null ||
-                                rowAmount < approverRange.min ||
-                                rowAmount > approverRange.max)
-
-                            return (
-                              <Button
-                                key={status}
-                                variant='outline'
-                                size='sm'
-                                disabled={outOfRange}
-                                title={
-                                  outOfRange
-                                    ? approverRange
-                                      ? `Outside your approval range (${approverRange.min.toLocaleString()}–${approverRange.max.toLocaleString()})`
-                                      : 'Loading your approval range…'
-                                    : undefined
-                                }
-                                onClick={() => onStatusChange(row, status)}
-                              >
-                                {status === 'paid' ? 'Mark Paid' : status === 'cancelled' ? 'Cancel' : status === 'blocked' ? 'Block' : 'Open'}
-                              </Button>
-                            )
-                          })}
-                        </div>
-                      )}
                     </div>
                   </td>
                 </tr>
