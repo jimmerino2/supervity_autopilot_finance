@@ -20,6 +20,9 @@ import { cn } from '@/lib/utils'
 
 const REFRESH_INTERVAL_MS = 30_000
 const RECENT_RUNS_LIMIT = 10
+const ACTIVITY_WINDOW_DAYS = 7
+const ACTIVITY_PAGE_LIMIT = 100 // server-side max page size for /workflow-runs
+const ACTIVITY_MAX_PAGES = 20 // safety cap so a runaway run volume can't page forever
 type RunStatus = 'scheduled' | 'running' | 'completed' | 'failed' | 'cancelled' | 'waiting'
 
 interface WorkflowRunSummary {
@@ -86,6 +89,7 @@ export interface DailyRunActivity {
   runs: number
   completed: number
   failed: number
+  cancelled: number
 }
 
 export interface RunHealthStats {
@@ -147,7 +151,7 @@ function buildDailyActivity(runs: WorkflowRunSummary[], days = 7): DailyRunActiv
   for (let i = days - 1; i >= 0; i -= 1) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    buckets.set(key, { name: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }), runs: 0, completed: 0, failed: 0 })
+    buckets.set(key, { name: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }), runs: 0, completed: 0, failed: 0, cancelled: 0 })
   }
 
   for (const run of runs) {
@@ -157,9 +161,38 @@ function buildDailyActivity(runs: WorkflowRunSummary[], days = 7): DailyRunActiv
     bucket.runs += 1
     if (run.status === 'completed') bucket.completed += 1
     if (run.status === 'failed') bucket.failed += 1
+    if (run.status === 'cancelled') bucket.cancelled += 1
   }
 
   return Array.from(buckets.values())
+}
+
+/**
+ * Pages through /workflow-runs (server-sorted newest-first, capped at
+ * ACTIVITY_PAGE_LIMIT per page) until a full ACTIVITY_WINDOW_DAYS window is
+ * covered. Deliberately separate from the RECENT_RUNS_LIMIT fetch used for the
+ * Recent Runs table and per-workflow health rows — at current run volume, the
+ * latest 10 runs alone can span under two days, which silently zeroed out
+ * most of the 7-day activity chart.
+ */
+async function fetchRunsForActivityWindow(): Promise<WorkflowRunSummary[]> {
+  const cutoff = Date.now() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  const collected: WorkflowRunSummary[] = []
+
+  for (let page = 1; page <= ACTIVITY_MAX_PAGES; page += 1) {
+    const res = await apiClient.get<WorkflowRunsListResponse>(
+      `/api/supervity/workflow-runs?limit=${ACTIVITY_PAGE_LIMIT}&page=${page}`
+    )
+    collected.push(...res.workflowRuns)
+
+    const oldestOnPage = res.workflowRuns[res.workflowRuns.length - 1]
+    const reachedWindowStart = !oldestOnPage || new Date(oldestOnPage.createdAt).getTime() < cutoff
+    const reachedLastPage = page >= res.pagination.totalPages
+
+    if (reachedWindowStart || reachedLastPage) break
+  }
+
+  return collected
 }
 
 function emptyCounts(): WorkflowDashboardCounts {
@@ -265,11 +298,15 @@ export function WorkflowRunHealth({ onStatsChange }: WorkflowRunHealthProps) {
   const load = useCallback(async () => {
     setError(null)
     try {
-      // Only the latest RECENT_RUNS_LIMIT runs — fetching hundreds of records just to
-      // populate this table made every refresh cycle noticeably slow.
-      const first = await apiClient.get<WorkflowRunsListResponse>(
-        `/api/supervity/workflow-runs?limit=${RECENT_RUNS_LIMIT}&page=1`
-      )
+      // Only the latest RECENT_RUNS_LIMIT runs for the table/health rows below —
+      // fetching hundreds of records just to populate those made every refresh
+      // cycle noticeably slow. The activity chart needs its own, properly
+      // windowed fetch (see fetchRunsForActivityWindow) since at current run
+      // volume the latest 10 runs alone can span under two days.
+      const [first, activityRuns] = await Promise.all([
+        apiClient.get<WorkflowRunsListResponse>(`/api/supervity/workflow-runs?limit=${RECENT_RUNS_LIMIT}&page=1`),
+        fetchRunsForActivityWindow(),
+      ])
       const allRuns = first.workflowRuns
 
       setRuns(allRuns)
@@ -329,7 +366,7 @@ export function WorkflowRunHealth({ onStatsChange }: WorkflowRunHealthProps) {
       const finishedTotal = totalCompleted + totalFailed + totalCancelled
       const successRate = finishedTotal > 0 ? Math.round((totalCompleted / finishedTotal) * 100) : null
       const totalRuns = totalCompleted + totalFailed + totalCancelled + totalActive
-      const dailyActivity = buildDailyActivity(allRuns)
+      const dailyActivity = buildDailyActivity(activityRuns, ACTIVITY_WINDOW_DAYS)
 
       onStatsChangeRef.current?.({ activeRuns: totalActive, successRate, totalRuns, dailyActivity })
       setLastUpdated(new Date())

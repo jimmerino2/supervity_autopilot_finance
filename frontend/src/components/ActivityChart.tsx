@@ -20,6 +20,7 @@ export interface ActivityChartDatum {
   runs: number
   completed: number
   failed: number
+  cancelled: number
 }
 
 // Custom tooltip component
@@ -76,10 +77,6 @@ export function ActivityChart({
   const chartData = data ?? []
 
   const totalRuns = chartData.reduce((acc, d) => acc + d.runs, 0)
-  const totalCompleted = chartData.reduce((acc, d) => acc + d.completed, 0)
-  const totalFailed = chartData.reduce((acc, d) => acc + d.failed, 0)
-  const finished = totalCompleted + totalFailed
-  const successRate = finished > 0 ? Math.round((totalCompleted / finished) * 100) : null
 
   const firstDayRuns = chartData[0]?.runs ?? 0
   const lastDayRuns = chartData[chartData.length - 1]?.runs ?? 0
@@ -114,38 +111,32 @@ export function ActivityChart({
                   {totalRuns.toLocaleString()}
                 </p>
               </div>
-              <div className='h-10 w-px bg-border/50' />
-              <div className='text-right'>
-                <p className='text-micro uppercase text-brand-muted'>
-                  Success Rate
-                </p>
-                <p className='font-display text-lg font-bold text-brand-navy'>
-                  {successRate !== null ? `${successRate}%` : '—'}
-                </p>
-              </div>
               {trend !== null && (
-                <motion.div
-                  className={cn(
-                    'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
-                    isPositive
-                      ? 'bg-emerald-50 text-emerald-600'
-                      : 'bg-red-50 text-red-500'
-                  )}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  {isPositive ? (
-                    <Icons.trendingUp className='h-3 w-3' strokeWidth={2} />
-                  ) : (
-                    <Icons.trendingUp
-                      className='h-3 w-3 rotate-180'
-                      strokeWidth={2}
-                    />
-                  )}
-                  {isPositive ? '+' : ''}
-                  {trend}%
-                </motion.div>
+                <>
+                  <div className='h-10 w-px bg-border/50' />
+                  <motion.div
+                    className={cn(
+                      'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
+                      isPositive
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : 'bg-red-50 text-red-500'
+                    )}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    {isPositive ? (
+                      <Icons.trendingUp className='h-3 w-3' strokeWidth={2} />
+                    ) : (
+                      <Icons.trendingUp
+                        className='h-3 w-3 rotate-180'
+                        strokeWidth={2}
+                      />
+                    )}
+                    {isPositive ? '+' : ''}
+                    {trend}%
+                  </motion.div>
+                </>
               )}
             </div>
           )}
@@ -196,6 +187,11 @@ export function ActivityChart({
                     <stop offset='0%' stopColor='#EF4444' stopOpacity={0.25} />
                     <stop offset='95%' stopColor='#EF4444' stopOpacity={0} />
                   </linearGradient>
+                  {/* Gradient for cancelled */}
+                  <linearGradient id='gradientCancelled' x1='0' y1='0' x2='0' y2='1'>
+                    <stop offset='0%' stopColor='#94A3B8' stopOpacity={0.25} />
+                    <stop offset='95%' stopColor='#94A3B8' stopOpacity={0} />
+                  </linearGradient>
                 </defs>
 
                 <CartesianGrid
@@ -230,6 +226,23 @@ export function ActivityChart({
                 />
 
                 <Tooltip content={<CustomTooltip />} />
+
+                {/* Cancelled - background layer */}
+                <Area
+                  type='monotone'
+                  dataKey='cancelled'
+                  name='Cancelled'
+                  stroke='#94A3B8'
+                  strokeWidth={1.5}
+                  fill='url(#gradientCancelled)'
+                  dot={false}
+                  activeDot={{
+                    r: 4,
+                    fill: '#94A3B8',
+                    stroke: '#fff',
+                    strokeWidth: 2,
+                  }}
+                />
 
                 {/* Failed - background layer */}
                 <Area
@@ -300,6 +313,10 @@ export function ActivityChart({
             <div className='flex items-center gap-2'>
               <div className='h-2 w-2 rounded-full bg-red-500' />
               <span className='text-xs text-muted-foreground'>Failed</span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <div className='h-2 w-2 rounded-full bg-slate-400' />
+              <span className='text-xs text-muted-foreground'>Cancelled</span>
             </div>
           </div>
         )}
