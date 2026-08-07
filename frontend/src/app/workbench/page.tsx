@@ -34,16 +34,9 @@ interface Tool {
   href: string
 }
 
-// Each tile links to an already-built module elsewhere in the app.
+// Workbench-only tools — modules that already have their own sidebar entry
+// (Dashboard, AI Policies, AI Insights) aren't duplicated here.
 const tools: Tool[] = [
-  {
-    id: 'analytics',
-    title: 'Analytics Dashboard',
-    description: 'View live Supervity metrics, run health, and activity trends',
-    icon: Icons.activity,
-    color: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
-    href: '/',
-  },
   {
     id: 'ai-assistant',
     title: 'AI Assistant',
@@ -53,28 +46,20 @@ const tools: Tool[] = [
     href: '/workbench/ai-assistant',
   },
   {
-    id: 'ai-policies',
-    title: 'AI Policies',
-    description: 'Define business rules in natural language for the AI to follow',
-    icon: Icons.brain,
-    color: 'bg-gradient-to-br from-brand-cornflower to-brand-purple',
-    href: '/ai/policies',
-  },
-  {
-    id: 'ai-insights',
-    title: 'AI Insights',
-    description: 'AI-powered analysis of your invoice data',
-    icon: Icons.lightbulb,
-    color: 'bg-gradient-to-br from-amber-500 to-orange-500',
-    href: '/ai/insights',
-  },
-  {
     id: 'user-forms',
     title: 'User Forms',
     description: 'Review and action human-input steps paused on workflows',
     icon: Icons.inbox,
     color: 'bg-gradient-to-br from-sky-500 to-blue-600',
     href: '/workbench/forms',
+  },
+  {
+    id: 'orchestrator',
+    title: 'Invoice Orchestrator',
+    description: 'Run the master orchestrator to validate parked invoices',
+    icon: Icons.zap,
+    color: 'bg-gradient-to-br from-amber-500 to-orange-600',
+    href: '/workbench/orchestrator',
   },
 ]
 

@@ -33,6 +33,7 @@ from .purchase_order import router as purchase_order_router
 from .purchase_order_line import router as purchase_order_line_router
 from .policies import router as policies_router
 from .insights import router as insights_router
+from .orchestrator import router as orchestrator_router
 
 __all__ = [
     "health_router",
@@ -57,4 +58,5 @@ __all__ = [
     "purchase_order_line_router",
     "policies_router",
     "insights_router",
+    "orchestrator_router",
 ]
