@@ -22,12 +22,5 @@ export type { RuleFormData, RuleAnalysis, RuleConflict, RuleOverride } from './p
 
 // Insight Components
 export { InsightCard } from './insights/InsightCard'
-export { PatternCluster } from './insights/PatternCluster'
-export { ActionCard } from './insights/ActionCard'
-
-// Types and utilities
-export type { Insight, InsightSeverity, InsightType } from './insights/InsightCard'
-export { getSeverityConfig } from './insights/InsightCard'
-export type { Pattern } from './insights/PatternCluster'
-export type { ActionItem } from './insights/ActionCard'
+export type { Insight, InsightType } from './insights/InsightCard'
 
