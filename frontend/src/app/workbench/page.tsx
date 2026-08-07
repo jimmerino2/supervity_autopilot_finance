@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Icons } from '@/components/ui/icons'
-import { cn } from '@/lib/utils'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -32,87 +31,64 @@ interface Tool {
   description: string
   icon: React.ElementType
   color: string
-  status: 'available' | 'coming-soon'
-  href?: string
+  href: string
 }
 
-// Sample workbench tools
+// Each tile links to an already-built module elsewhere in the app.
 const tools: Tool[] = [
+  {
+    id: 'analytics',
+    title: 'Analytics Dashboard',
+    description: 'View live Supervity metrics, run health, and activity trends',
+    icon: Icons.activity,
+    color: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
+    href: '/',
+  },
   {
     id: 'ai-assistant',
     title: 'AI Assistant',
     description: 'Chat with your AI assistant for help with tasks',
     icon: Icons.sparkles,
     color: 'bg-gradient-to-br from-brand-navy to-brand-purple',
-    status: 'available',
     href: '/workbench/ai-assistant',
   },
   {
-    id: 'automation',
-    title: 'Automation Builder',
-    description: 'Create and manage automated workflows',
-    icon: Icons.zap,
+    id: 'ai-policies',
+    title: 'AI Policies',
+    description: 'Define business rules in natural language for the AI to follow',
+    icon: Icons.brain,
     color: 'bg-gradient-to-br from-brand-cornflower to-brand-purple',
-    status: 'available',
+    href: '/ai/policies',
   },
   {
-    id: 'analytics',
-    title: 'Analytics Dashboard',
-    description: 'View detailed analytics and reports',
-    icon: Icons.activity,
-    color: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
-    status: 'coming-soon',
-  },
-  {
-    id: 'integrations',
-    title: 'Integrations',
-    description: 'Connect with third-party services',
-    icon: Icons.share,
+    id: 'ai-insights',
+    title: 'AI Insights',
+    description: 'AI-powered analysis of your invoice data',
+    icon: Icons.lightbulb,
     color: 'bg-gradient-to-br from-amber-500 to-orange-500',
-    status: 'coming-soon',
+    href: '/ai/insights',
   },
 ]
 
 function ToolCard({ tool, onOpen }: { tool: Tool; onOpen: (tool: Tool) => void }) {
   const Icon = tool.icon
-  const isComingSoon = tool.status === 'coming-soon'
 
   return (
     <motion.div variants={itemVariants}>
-      <Card
-        className={cn(
-          'h-full cursor-pointer transition-all duration-300',
-          isComingSoon && 'opacity-60'
-        )}
-      >
+      <Card className='h-full cursor-pointer transition-all duration-300'>
         <CardHeader>
-          <div className='flex items-start justify-between'>
-            <div
-              className={cn(
-                'flex h-12 w-12 items-center justify-center rounded-xl text-white',
-                tool.color
-              )}
-            >
-              <Icon className='h-6 w-6' strokeWidth={1.5} />
-            </div>
-            {isComingSoon && (
-              <span className='rounded-full bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted'>
-                Coming Soon
-              </span>
-            )}
+          <div
+            className={`flex h-12 w-12 items-center justify-center rounded-xl text-white ${tool.color}`}
+          >
+            <Icon className='h-6 w-6' strokeWidth={1.5} />
           </div>
           <CardTitle className='mt-4'>{tool.title}</CardTitle>
           <CardDescription>{tool.description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            variant={isComingSoon ? 'outline' : 'default'}
-            className='w-full'
-            disabled={isComingSoon}
-            onClick={() => onOpen(tool)}
-          >
-            {isComingSoon ? 'Notify Me' : 'Open Tool'}
-            {!isComingSoon && <Icons.arrowRight className='ml-2 h-4 w-4' />}
+          <Button className='w-full' onClick={() => onOpen(tool)}>
+            Open
+            <Icons.arrowRight className='ml-2 h-4 w-4' />
           </Button>
         </CardContent>
       </Card>
@@ -124,7 +100,7 @@ export default function WorkbenchPage() {
   const router = useRouter()
 
   const handleOpenTool = (tool: Tool) => {
-    if (tool.href) router.push(tool.href)
+    router.push(tool.href)
   }
 
   return (
@@ -140,7 +116,7 @@ export default function WorkbenchPage() {
           Workbench
         </h1>
         <p className='mt-2 text-lg text-muted-foreground'>
-          Access your AI tools and automation workflows.
+          Jump into your AI tools and dashboards.
         </p>
       </motion.div>
 
@@ -150,41 +126,6 @@ export default function WorkbenchPage() {
           <ToolCard key={tool.id} tool={tool} onOpen={handleOpenTool} />
         ))}
       </div>
-
-      {/* Quick Actions */}
-      <motion.div variants={itemVariants}>
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Icons.zap className='h-5 w-5 text-brand-cornflower' />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>
-              Frequently used actions for faster access
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className='flex flex-wrap gap-3'>
-              <Button variant='outline' size='sm'>
-                <Icons.plus className='mr-2 h-4 w-4' />
-                New Task
-              </Button>
-              <Button variant='outline' size='sm'>
-                <Icons.fileText className='mr-2 h-4 w-4' />
-                Generate Report
-              </Button>
-              <Button variant='outline' size='sm'>
-                <Icons.mail className='mr-2 h-4 w-4' />
-                Send Notification
-              </Button>
-              <Button variant='outline' size='sm'>
-                <Icons.download className='mr-2 h-4 w-4' />
-                Export Data
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
     </motion.div>
   )
 }
