@@ -24,6 +24,11 @@ from app.services.supervity import (
     get_workflow_runs,
     get_workflow_runs_dashboard,
     get_workflow_run,
+    create_chat_thread,
+    list_chat_threads,
+    get_chat_messages,
+    send_chat_message_stream,
+    delete_chat_thread,
 )
 
 router = APIRouter(prefix="/supervity", tags=["Supervity"])
@@ -80,6 +85,11 @@ class CancelBody(BaseModel):
     runIds: Optional[list[str]] = None
     workflowId: Optional[str] = None
     reason: Optional[str] = None
+
+
+class SendChatMessageBody(BaseModel):
+    message: str
+    model: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -243,5 +253,56 @@ async def workflow_runs_dashboard(workflow_id: str):
 async def workflow_run_details(run_id: str):
     try:
         return await get_workflow_run(run_id)
+    except Exception as e:
+        _raise_from(e)
+
+
+# ---------------------------------------------------------------------------
+# Chats
+# ---------------------------------------------------------------------------
+
+@router.post("/chats")
+async def create_thread():
+    try:
+        return await create_chat_thread()
+    except Exception as e:
+        _raise_from(e)
+
+
+@router.get("/chats")
+async def list_threads(page: int = 1, limit: int = 20):
+    try:
+        return await list_chat_threads(page=page, limit=limit)
+    except Exception as e:
+        _raise_from(e)
+
+
+@router.get("/chats/{thread_id}/messages")
+async def thread_messages(thread_id: str, limit: int = 20):
+    try:
+        return await get_chat_messages(thread_id, limit=limit)
+    except Exception as e:
+        _raise_from(e)
+
+
+@router.post("/chats/{thread_id}/messages")
+async def send_message(thread_id: str, body: SendChatMessageBody):
+    """SSE-streamed AI response — proxies Supervity's stream back to the caller."""
+    from fastapi.responses import StreamingResponse
+
+    async def event_generator():
+        try:
+            async for line in send_chat_message_stream(thread_id, body.message, body.model):
+                yield f"{line}\n"
+        except httpx.HTTPStatusError as e:
+            yield f"event: error\ndata: {e.response.text}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.delete("/chats/{thread_id}")
+async def remove_thread(thread_id: str):
+    try:
+        return await delete_chat_thread(thread_id)
     except Exception as e:
         _raise_from(e)

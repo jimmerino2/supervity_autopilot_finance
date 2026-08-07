@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import {
   Card,
   CardContent,
@@ -25,8 +26,18 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
+interface Tool {
+  id: string
+  title: string
+  description: string
+  icon: React.ElementType
+  color: string
+  status: 'available' | 'coming-soon'
+  href?: string
+}
+
 // Sample workbench tools
-const tools = [
+const tools: Tool[] = [
   {
     id: 'ai-assistant',
     title: 'AI Assistant',
@@ -34,6 +45,7 @@ const tools = [
     icon: Icons.sparkles,
     color: 'bg-gradient-to-br from-brand-navy to-brand-purple',
     status: 'available',
+    href: '/workbench/ai-assistant',
   },
   {
     id: 'automation',
@@ -61,7 +73,7 @@ const tools = [
   },
 ]
 
-function ToolCard({ tool }: { tool: (typeof tools)[0] }) {
+function ToolCard({ tool, onOpen }: { tool: Tool; onOpen: (tool: Tool) => void }) {
   const Icon = tool.icon
   const isComingSoon = tool.status === 'coming-soon'
 
@@ -97,6 +109,7 @@ function ToolCard({ tool }: { tool: (typeof tools)[0] }) {
             variant={isComingSoon ? 'outline' : 'default'}
             className='w-full'
             disabled={isComingSoon}
+            onClick={() => onOpen(tool)}
           >
             {isComingSoon ? 'Notify Me' : 'Open Tool'}
             {!isComingSoon && <Icons.arrowRight className='ml-2 h-4 w-4' />}
@@ -108,6 +121,12 @@ function ToolCard({ tool }: { tool: (typeof tools)[0] }) {
 }
 
 export default function WorkbenchPage() {
+  const router = useRouter()
+
+  const handleOpenTool = (tool: Tool) => {
+    if (tool.href) router.push(tool.href)
+  }
+
   return (
     <motion.div
       className='space-y-8'
@@ -128,7 +147,7 @@ export default function WorkbenchPage() {
       {/* Tools Grid */}
       <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
         {tools.map((tool) => (
-          <ToolCard key={tool.id} tool={tool} />
+          <ToolCard key={tool.id} tool={tool} onOpen={handleOpenTool} />
         ))}
       </div>
 

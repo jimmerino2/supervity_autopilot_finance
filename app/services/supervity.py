@@ -282,3 +282,75 @@ async def get_workflow_run(run_id: str) -> dict:
         _log_error(response)
         response.raise_for_status()
         return response.json()
+
+
+# ---------------------------------------------------------------------------
+# Chats  (base path: /chats)
+# ---------------------------------------------------------------------------
+
+async def create_chat_thread() -> dict:
+    """POST /chats — create a new empty chat thread. Returns {"threadId": ...}."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"{SUPERVITY_BASE_URL}/chats", headers=headers)
+        _log_error(response)
+        response.raise_for_status()
+        return response.json()
+
+
+async def list_chat_threads(page: int = 1, limit: int = 20) -> dict:
+    """GET /chats — list chat threads for the authenticated user, newest first."""
+    params = {"page": page, "limit": limit}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{SUPERVITY_BASE_URL}/chats", headers=headers, params=params)
+        _log_error(response)
+        response.raise_for_status()
+        return response.json()
+
+
+async def get_chat_messages(thread_id: str, limit: int = 20) -> dict:
+    """GET /chats/:threadId/messages — messages in a thread plus any linked workflow/rule.
+
+    NOTE: despite docs.supervity.ai listing `page` as a valid query param here,
+    the live endpoint rejects it with "unrecognized_keys" — only `limit` works.
+    """
+    params = {"limit": limit}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{SUPERVITY_BASE_URL}/chats/{thread_id}/messages", headers=headers, params=params
+        )
+        _log_error(response)
+        response.raise_for_status()
+        return response.json()
+
+
+async def send_chat_message_stream(thread_id: str, message: str, model: str | None = None):
+    """POST /chats/:threadId/messages — send a message, streaming the SSE response.
+
+    multipart/form-data per docs.supervity.ai/api-docs/chats — a plain string
+    field, unlike workflow-runs/execute this one doesn't need a JSON-encoded
+    object field, so it isn't affected by that endpoint's validation bug.
+
+    Async generator yielding raw SSE lines. Events: ping, message, error.
+    """
+    fields: dict[str, str] = {"message": message}
+    if model:
+        fields["model"] = model
+    files = {name: (None, value) for name, value in fields.items()}
+
+    async with httpx.AsyncClient(timeout=None) as client:
+        async with client.stream(
+            "POST", f"{SUPERVITY_BASE_URL}/chats/{thread_id}/messages", headers=headers, files=files
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line:
+                    yield line
+
+
+async def delete_chat_thread(thread_id: str) -> dict:
+    """DELETE /chats/:threadId — soft-delete a thread and its messages."""
+    async with httpx.AsyncClient() as client:
+        response = await client.delete(f"{SUPERVITY_BASE_URL}/chats/{thread_id}", headers=headers)
+        _log_error(response)
+        response.raise_for_status()
+        return response.json()
