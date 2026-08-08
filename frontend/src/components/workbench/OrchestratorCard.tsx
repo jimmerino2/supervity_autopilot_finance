@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { postSSE } from '@/lib/sse-stream'
 import { Button } from '@/components/ui/button'
@@ -17,10 +17,10 @@ export interface OrchestratorStatus {
   workflowId: string | null
   name: string
   description: string
-  batchNote: string | null
   isConfigured: boolean
   isActive: boolean
   latestRun: { id: string; status: string; createdAt: string; updatedAt: string } | null
+  relatedCount: { label: string; count: number } | null
   schedule: { description: string | null; isPaused: boolean | null; timezone: string | null } | null
 }
 
@@ -49,19 +49,24 @@ interface OrchestratorResult {
 interface OrchestratorCardProps {
   status: OrchestratorStatus
   onRunComplete: () => void
+  onRunningChange?: (running: boolean) => void
 }
 
 // ============================================================================
 // Component
 // ============================================================================
 
-export function OrchestratorCard({ status, onRunComplete }: OrchestratorCardProps) {
+export function OrchestratorCard({ status, onRunComplete, onRunningChange }: OrchestratorCardProps) {
   const [isRunning, setIsRunning] = useState(false)
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [runError, setRunError] = useState<string | null>(null)
   const [result, setResult] = useState<OrchestratorResult | null>(null)
 
   const isBlocked = !status.isConfigured || status.isActive || isRunning
+
+  useEffect(() => {
+    onRunningChange?.(isRunning || status.isActive)
+  }, [isRunning, status.isActive, onRunningChange])
 
   const handleRun = useCallback(async () => {
     if (!status.isConfigured) return
@@ -170,15 +175,14 @@ export function OrchestratorCard({ status, onRunComplete }: OrchestratorCardProp
           </Button>
         </div>
 
-      </CardHeader>
-      <CardContent className='space-y-4'>
-        {status.batchNote && (
-          <div className='flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground'>
-            <Icons.layers className='h-3.5 w-3.5 flex-shrink-0' />
-            {status.batchNote}
+        {status.relatedCount && (
+          <div className='mt-3 flex items-baseline gap-2'>
+            <span className='text-2xl font-bold text-brand-navy'>{status.relatedCount.count}</span>
+            <span className='text-xs text-muted-foreground'>{status.relatedCount.label}</span>
           </div>
         )}
-
+      </CardHeader>
+      <CardContent className='space-y-4'>
         {status.schedule && (
           <div className='flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground'>
             <Icons.clock className='h-3.5 w-3.5 flex-shrink-0' />

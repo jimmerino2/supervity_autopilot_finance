@@ -160,7 +160,7 @@ export function PolicyEditModal({ policy, isOpen, onClose, onSave }: PolicyEditM
               <textarea
                 value={formData.details}
                 onChange={(e) => setFormData((prev) => ({ ...prev, details: e.target.value }))}
-                placeholder="Describe the rule in plain English, e.g. 'Always ask for user confirmation before sending emails to vendors'"
+                placeholder="Describe the rule in plain English, e.g. 'Auto-approve invoices under $500 from approved vendors'"
                 rows={5}
                 className={cn(
                   'w-full px-3 py-2 rounded-lg border border-input resize-none',

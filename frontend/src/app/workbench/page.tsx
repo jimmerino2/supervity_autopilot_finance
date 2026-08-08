@@ -20,6 +20,7 @@ export default function WorkbenchPage() {
   const [isLoadingInitial, setIsLoadingInitial] = useState(true)
   const [orchestrators, setOrchestrators] = useState<OrchestratorStatus[]>([])
   const [initialError, setInitialError] = useState<string | null>(null)
+  const [isGeneratingReviewForms, setIsGeneratingReviewForms] = useState(false)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -69,12 +70,17 @@ export default function WorkbenchPage() {
 
       <motion.div variants={itemVariants} className='grid gap-6 lg:grid-cols-2 xl:grid-cols-4'>
         {orchestrators.map((orch) => (
-          <OrchestratorCard key={orch.key} status={orch} onRunComplete={loadStatus} />
+          <OrchestratorCard
+            key={orch.key}
+            status={orch}
+            onRunComplete={loadStatus}
+            onRunningChange={orch.key === 'manual-validation' ? setIsGeneratingReviewForms : undefined}
+          />
         ))}
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <UserFormsList />
+        <UserFormsList refreshWhile={isGeneratingReviewForms} />
       </motion.div>
     </motion.div>
   )

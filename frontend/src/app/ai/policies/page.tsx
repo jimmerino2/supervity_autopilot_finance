@@ -184,7 +184,7 @@ export default function AIPoliciesPage() {
           className={activeTab !== 'policies' ? 'opacity-50' : ''}
         >
           <Icons.plus className="mr-2 h-4 w-4" />
-          Create Policy
+          Check for Conflicts
         </Button>
       </motion.div>
 

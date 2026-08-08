@@ -50,7 +50,6 @@ export function CreateWithAI({ onPolicyCreate, onCancel }: CreateWithAIProps) {
 
   // Example policies
   const examples = [
-    'Always ask for user confirmation before sending emails to vendors',
     'Auto-approve invoices under $500 from approved vendors',
     'Escalate support tickets from enterprise customers to Tier 2',
     'When a new employee joins, assign the onboarding checklist',
@@ -116,7 +115,7 @@ export function CreateWithAI({ onPolicyCreate, onCancel }: CreateWithAIProps) {
                 setInput(e.target.value)
                 if (conflictBlock) setConflictBlock(null)
               }}
-              placeholder="Example: Always ask for user confirmation before sending emails to vendors..."
+              placeholder="Example: Auto-approve invoices under $500 from approved vendors..."
               rows={5}
               className={cn(
                 'w-full rounded-lg border-0 bg-gray-50 p-4',

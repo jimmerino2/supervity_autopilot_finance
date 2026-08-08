@@ -94,7 +94,14 @@ const TABS: { id: 'all' | FormStatus; label: string }[] = [
 // Component
 // ============================================================================
 
-export function UserFormsList() {
+interface UserFormsListProps {
+  /** While true, the list auto-refreshes every 5s (plus once immediately on
+   * both the true and false edges) — used to keep pace with the "Generate
+   * Invoice Review Forms" orchestrator while it's actively creating requests. */
+  refreshWhile?: boolean
+}
+
+export function UserFormsList({ refreshWhile }: UserFormsListProps = {}) {
   const [tab, setTab] = useState<'all' | FormStatus>('pending')
   const [forms, setForms] = useState<UserForm[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -129,6 +136,21 @@ export function UserFormsList() {
   useEffect(() => {
     load()
   }, [load])
+
+  const wasRefreshingRef = useRef(false)
+  useEffect(() => {
+    const wasRefreshing = wasRefreshingRef.current
+    wasRefreshingRef.current = !!refreshWhile
+
+    if (refreshWhile) {
+      load()
+      const interval = setInterval(load, 5000)
+      return () => clearInterval(interval)
+    } else if (wasRefreshing) {
+      // Just stopped running — one more refresh to catch the final state.
+      load()
+    }
+  }, [refreshWhile, load])
 
   const openForm = useCallback(async (form: UserForm) => {
     setSelected(form)

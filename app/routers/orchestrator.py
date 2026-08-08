@@ -28,8 +28,10 @@ _MANUAL_VALIDATION_ENVS = {
 }
 
 # The master orchestrators surfaced in the Workbench, each pinned to a
-# specific Supervity workflow. `workflow_id: None` marks a placeholder — not
-# runnable yet, no Supervity lookups attempted for it.
+# specific Supervity workflow. `related_status` names the invoices.status
+# value shown as a live count alongside that card (None if not applicable).
+# `workflow_id: None` marks a placeholder — not runnable yet, no Supervity
+# lookups attempted for it.
 ORCHESTRATORS = {
     "outlook-extraction": {
         "workflow_id": "019fd177-01cf-7001-9b7a-7a2408784ac4",
@@ -37,7 +39,7 @@ ORCHESTRATORS = {
         "description": "Scans Outlook for invoice emails and logs new invoices into Supabase as parked.",
         "inputs": {},
         "envs": {},
-        "batch_note": None,
+        "related_status": None,
     },
     "invoice-pending-open": {
         "workflow_id": "019fdc8c-fb68-7000-815c-778caf0763b2",
@@ -45,7 +47,7 @@ ORCHESTRATORS = {
         "description": "Validates parked invoices and updates them to open or pending approval.",
         "inputs": {"submitted_by": "Supervity Auto"},
         "envs": {},
-        "batch_note": "Processes up to 100 invoices per run.",
+        "related_status": "parked",
     },
     "manual-validation": {
         "workflow_id": "019fe02b-eaa1-7000-bf92-0a6bad1a5c47",
@@ -53,7 +55,7 @@ ORCHESTRATORS = {
         "description": "Reviews blocked invoices and generates Invoice Manual Approval Requests for a human reviewer.",
         "inputs": {},
         "envs": _MANUAL_VALIDATION_ENVS,
-        "batch_note": "Generates up to 5 review requests per run.",
+        "related_status": "pending_approval",
     },
     "issue-payments": {
         "workflow_id": None,  # TODO: set once this operator is created on Supervity
@@ -61,8 +63,15 @@ ORCHESTRATORS = {
         "description": "Updates open invoices to closed and emails vendors when enabled by policy.",
         "inputs": {},
         "envs": {},
-        "batch_note": "Processes up to 100 invoices per run.",
+        "related_status": "open",
     },
+}
+
+# Maps each orchestrator's related_status to a display label for its count.
+_STATUS_LABELS = {
+    "parked": "Parked Invoices",
+    "pending_approval": "Pending Approval",
+    "open": "Open Invoices",
 }
 
 
@@ -88,7 +97,7 @@ async def get_invoice_counts():
     """Counts by status relevant to the invoice orchestrators."""
     return {
         "parked": _count_invoices_with_status("parked"),
-        "pendingApproval": _count_invoices_with_status("pending approval"),
+        "pendingApproval": _count_invoices_with_status("pending_approval"),
         "open": _count_invoices_with_status("open"),
     }
 
@@ -121,16 +130,23 @@ async def get_orchestrators_status():
             is_active = bool(latest_run and latest_run.get("status") in _ACTIVE_STATUSES)
             schedule = schedules_by_workflow.get(workflow_id)
 
+        related_status = orchestrator["related_status"]
+        related_count = (
+            {"label": _STATUS_LABELS.get(related_status, related_status), "count": _count_invoices_with_status(related_status)}
+            if related_status
+            else None
+        )
+
         result.append(
             {
                 "key": key,
                 "workflowId": workflow_id,
                 "name": orchestrator["name"],
                 "description": orchestrator["description"],
-                "batchNote": orchestrator["batch_note"],
                 "isConfigured": workflow_id is not None,
                 "isActive": is_active,
                 "latestRun": latest_run,
+                "relatedCount": related_count,
                 "schedule": {
                     "description": schedule.get("description"),
                     "isPaused": schedule.get("isPaused"),
