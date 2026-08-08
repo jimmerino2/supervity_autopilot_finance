@@ -157,10 +157,18 @@ function DiagnosticsCard() {
   )
 }
 
+interface AutomationStats {
+  automated: number
+  manual: number
+  total: number
+  automatedPercentage: number | null
+}
+
 // Main Dashboard — no auth required, renders directly
 export default function HomePage() {
-  const [paidInvoiceCount, setPaidInvoiceCount] = useState(0)
-  const [invoiceTrend, setInvoiceTrend] = useState({ value: 'Loading...', positive: true })
+  const [totalInvoiceCount, setTotalInvoiceCount] = useState(0)
+  const [successfulInvoiceCount, setSuccessfulInvoiceCount] = useState(0)
+  const [automationStats, setAutomationStats] = useState<AutomationStats | null>(null)
   const [runHealthStats, setRunHealthStats] = useState<RunHealthStats>({
     activeRuns: 0,
     successRate: null,
@@ -169,53 +177,29 @@ export default function HomePage() {
   })
   const [runHealthLoaded, setRunHealthLoaded] = useState(false)
 
-  const currentMonthLabel = new Date().toLocaleString('en-US', {
-    month: 'short',
-    year: 'numeric',
-  })
-
   useEffect(() => {
-    const loadPaidInvoiceMetrics = async () => {
+    const loadInvoiceMetrics = async () => {
       try {
-        const invoices = await apiClient.get<Array<{ status?: string; posting_date?: string; document_date?: string }>>('/api/invoice')
-
-        const getMonthKey = (value?: string) => {
-          if (!value) return null
-          const normalizedValue = value.includes('T') || value.includes(' ') ? value.replace(' ', 'T') : value
-          const date = new Date(normalizedValue)
-          if (Number.isNaN(date.getTime())) return null
-          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        }
-
-        const now = new Date()
-        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-        const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-        const previousMonthKey = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`
-
-        const currentMonthCount = invoices.filter((invoice) => {
-          const invoiceMonth = getMonthKey(invoice.posting_date || invoice.document_date)
-          return invoice.status === 'paid' && invoiceMonth === currentMonthKey
-        }).length
-
-        const previousMonthCount = invoices.filter((invoice) => {
-          const invoiceMonth = getMonthKey(invoice.posting_date || invoice.document_date)
-          return invoice.status === 'paid' && invoiceMonth === previousMonthKey
-        }).length
-
-        const delta = currentMonthCount - previousMonthCount
-        setPaidInvoiceCount(currentMonthCount)
-        setInvoiceTrend({
-          value: delta === 0 ? 'No change vs last month' : `${delta > 0 ? '+' : ''}${delta} vs last month`,
-          positive: delta >= 0,
-        })
+        const invoices = await apiClient.get<Array<{ status?: string }>>('/api/invoice')
+        setTotalInvoiceCount(invoices.length)
+        // "Successful" = closed (paid off and fully settled).
+        setSuccessfulInvoiceCount(invoices.filter((i) => i.status === 'closed').length)
       } catch (error) {
         console.error('Failed to load invoice metrics', error)
-        setPaidInvoiceCount(0)
-        setInvoiceTrend({ value: 'Unable to load trend', positive: false })
       }
     }
 
-    loadPaidInvoiceMetrics()
+    const loadAutomationStats = async () => {
+      try {
+        const stats = await apiClient.get<AutomationStats>('/api/invoice_audit_log/automation-stats')
+        setAutomationStats(stats)
+      } catch (error) {
+        console.error('Failed to load automation stats', error)
+      }
+    }
+
+    loadInvoiceMetrics()
+    loadAutomationStats()
   }, [])
 
   return (
@@ -231,33 +215,32 @@ export default function HomePage() {
       {/* Stats Grid - Bento style */}
       <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
         <StatCard
-          title={`Successful Invoices (${currentMonthLabel})`}
-          value={paidInvoiceCount}
-          icon={Icons.users}
-          trend={{ value: invoiceTrend.value, positive: invoiceTrend.positive }}
-          colorClass='bg-brand-navy'
+          title='Invoices Processed'
+          value={totalInvoiceCount}
+          icon={Icons.fileText}
+          colorClass='bg-gradient-to-br from-brand-navy to-brand-purple'
           delay={0.1}
         />
         <StatCard
-          title='Active Agent Runs'
-          value={runHealthStats.activeRuns}
-          icon={Icons.activity}
-          colorClass='bg-brand-cornflower'
+          title='Successful Invoices'
+          value={successfulInvoiceCount}
+          icon={Icons.users}
+          colorClass='bg-brand-navy'
           delay={0.2}
         />
         <StatCard
-          title='Agent Run Success Rate'
-          value={runHealthStats.successRate ?? 0}
+          title='Automated Operations'
+          value={automationStats?.automatedPercentage ?? 0}
           suffix='%'
           icon={Icons.checkCircle}
           colorClass='bg-brand-purple'
           delay={0.3}
         />
         <StatCard
-          title='Total Tracked Runs'
-          value={runHealthStats.totalRuns}
-          icon={Icons.zap}
-          colorClass='bg-gradient-to-br from-brand-navy to-brand-purple'
+          title='Active Agent Runs'
+          value={runHealthStats.activeRuns}
+          icon={Icons.activity}
+          colorClass='bg-brand-cornflower'
           delay={0.4}
         />
       </div>

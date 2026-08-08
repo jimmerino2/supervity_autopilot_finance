@@ -19,6 +19,11 @@ import { Icons } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 const REFRESH_INTERVAL_MS = 30_000
+// The activity chart is day-bucketed, so it doesn't need 30s freshness — and
+// fetching it (up to ACTIVITY_MAX_PAGES paginated calls) on every fast tick is
+// what was tripping Supervity's rate limiter ("Too many requests"). Refresh it
+// on its own, much slower cadence instead.
+const ACTIVITY_REFRESH_INTERVAL_MS = 5 * 60_000
 const RECENT_RUNS_LIMIT = 10
 const ACTIVITY_WINDOW_DAYS = 7
 const ACTIVITY_PAGE_LIMIT = 100 // server-side max page size for /workflow-runs
@@ -292,21 +297,29 @@ export function WorkflowRunHealth({ onStatsChange }: WorkflowRunHealthProps) {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
 
+  const [dailyActivity, setDailyActivity] = useState<DailyRunActivity[]>([])
+  const [coreStats, setCoreStats] = useState<{ activeRuns: number; successRate: number | null; totalRuns: number }>({
+    activeRuns: 0,
+    successRate: null,
+    totalRuns: 0,
+  })
+  // Gate onStatsChange until both loaders have resolved at least once, so
+  // consumers (e.g. the dashboard's activity chart loader) don't see the
+  // zeroed-out initial state as "loaded".
+  const [coreLoadedOnce, setCoreLoadedOnce] = useState(false)
+  const [activityLoadedOnce, setActivityLoadedOnce] = useState(false)
+
   const onStatsChangeRef = useRef(onStatsChange)
   onStatsChangeRef.current = onStatsChange
 
-  const load = useCallback(async () => {
+  // Cheap: recent runs + one dashboard call per distinct workflow. Safe to run
+  // on the fast 30s cycle.
+  const loadCore = useCallback(async () => {
     setError(null)
     try {
-      // Only the latest RECENT_RUNS_LIMIT runs for the table/health rows below —
-      // fetching hundreds of records just to populate those made every refresh
-      // cycle noticeably slow. The activity chart needs its own, properly
-      // windowed fetch (see fetchRunsForActivityWindow) since at current run
-      // volume the latest 10 runs alone can span under two days.
-      const [first, activityRuns] = await Promise.all([
-        apiClient.get<WorkflowRunsListResponse>(`/api/supervity/workflow-runs?limit=${RECENT_RUNS_LIMIT}&page=1`),
-        fetchRunsForActivityWindow(),
-      ])
+      const first = await apiClient.get<WorkflowRunsListResponse>(
+        `/api/supervity/workflow-runs?limit=${RECENT_RUNS_LIMIT}&page=1`
+      )
       const allRuns = first.workflowRuns
 
       setRuns(allRuns)
@@ -366,22 +379,46 @@ export function WorkflowRunHealth({ onStatsChange }: WorkflowRunHealthProps) {
       const finishedTotal = totalCompleted + totalFailed + totalCancelled
       const successRate = finishedTotal > 0 ? Math.round((totalCompleted / finishedTotal) * 100) : null
       const totalRuns = totalCompleted + totalFailed + totalCancelled + totalActive
-      const dailyActivity = buildDailyActivity(activityRuns, ACTIVITY_WINDOW_DAYS)
 
-      onStatsChangeRef.current?.({ activeRuns: totalActive, successRate, totalRuns, dailyActivity })
+      setCoreStats({ activeRuns: totalActive, successRate, totalRuns })
       setLastUpdated(new Date())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load workflow run health')
     } finally {
       setIsLoading(false)
+      setCoreLoadedOnce(true)
+    }
+  }, [])
+
+  // Expensive: pages through up to ACTIVITY_MAX_PAGES calls to cover the
+  // 7-day window. Runs on its own slow cadence — see ACTIVITY_REFRESH_INTERVAL_MS.
+  const loadActivity = useCallback(async () => {
+    try {
+      const activityRuns = await fetchRunsForActivityWindow()
+      setDailyActivity(buildDailyActivity(activityRuns, ACTIVITY_WINDOW_DAYS))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load activity chart')
+    } finally {
+      setActivityLoadedOnce(true)
     }
   }, [])
 
   useEffect(() => {
-    load()
-    const interval = setInterval(load, REFRESH_INTERVAL_MS)
+    if (!coreLoadedOnce || !activityLoadedOnce) return
+    onStatsChangeRef.current?.({ ...coreStats, dailyActivity })
+  }, [coreStats, dailyActivity, coreLoadedOnce, activityLoadedOnce])
+
+  useEffect(() => {
+    loadCore()
+    const interval = setInterval(loadCore, REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [load])
+  }, [loadCore])
+
+  useEffect(() => {
+    loadActivity()
+    const interval = setInterval(loadActivity, ACTIVITY_REFRESH_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [loadActivity])
 
   const openRunDetail = async (run: WorkflowRunSummary) => {
     // Guard against the case where Supervity couldn't resolve this run's
@@ -436,7 +473,16 @@ export function WorkflowRunHealth({ onStatsChange }: WorkflowRunHealthProps) {
         </div>
         <div className='flex items-center gap-3 text-sm text-muted-foreground'>
           {lastUpdated && <span>Updated {formatRelativeTime(lastUpdated.toISOString())} · auto-refreshes every 30s</span>}
-          <Button variant='outline' size='sm' onClick={load} disabled={isLoading} className='gap-2'>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => {
+              loadCore()
+              loadActivity()
+            }}
+            disabled={isLoading}
+            className='gap-2'
+          >
             <Icons.refresh className={cn('h-4 w-4', isLoading && 'animate-spin')} />
             Refresh
           </Button>
