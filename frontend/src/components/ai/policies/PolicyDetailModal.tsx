@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Icons } from '@/components/ui/icons'
 import type { Policy } from './PolicyCard'
-import { parsePolicyName } from './policyCategories'
 
 // ============================================================================
 // Types
@@ -164,19 +163,7 @@ export function PolicyDetailModal({ policy, isOpen, onClose, onEdit, onDelete }:
               transition={{ delay: 0.1 }}
             >
               <div className="flex-1 pr-4">
-                {(() => {
-                  const { category, name } = parsePolicyName(policy.name)
-                  return (
-                    <>
-                      {category && (
-                        <span className="inline-block mb-1.5 rounded-full bg-brand-cornflower/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-cornflower">
-                          {category}
-                        </span>
-                      )}
-                      <h2 className="text-xl font-semibold text-brand-navy mb-1">{name}</h2>
-                    </>
-                  )
-                })()}
+                <h2 className="text-xl font-semibold text-brand-navy mb-1">{policy.name}</h2>
                 <p className="text-xs text-muted-foreground">
                   Created by {policy.created_by} · {formatDateTime(policy.created_at)}
                 </p>

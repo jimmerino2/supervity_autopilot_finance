@@ -6,14 +6,13 @@ import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Icons } from '@/components/ui/icons'
-import { POLICY_CATEGORIES, type PolicyCategory } from './policyCategories'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 interface CreateWithAIProps {
-  onPolicyCreate: (policy: { category: PolicyCategory; name: string; details: string }) => Promise<void>
+  onPolicyCreate: (policy: { name: string; details: string }) => Promise<void>
   onCancel?: () => void
 }
 
@@ -33,7 +32,6 @@ function suggestName(input: string): string {
 // ============================================================================
 
 export function CreateWithAI({ onPolicyCreate, onCancel }: CreateWithAIProps) {
-  const [category, setCategory] = useState<PolicyCategory | ''>('')
   const [input, setInput] = useState('')
   const [policyName, setPolicyName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
@@ -60,10 +58,6 @@ export function CreateWithAI({ onPolicyCreate, onCancel }: CreateWithAIProps) {
 
   const handleSave = useCallback(async () => {
     if (!input.trim() || !policyName.trim()) return
-    if (!category) {
-      setError('Select which orchestrator this policy applies to before saving.')
-      return
-    }
 
     setError(null)
     setConflictBlock(null)
@@ -89,12 +83,12 @@ export function CreateWithAI({ onPolicyCreate, onCancel }: CreateWithAIProps) {
 
     setIsSaving(true)
     try {
-      await onPolicyCreate({ category, name: policyName.trim(), details: input.trim() })
+      await onPolicyCreate({ name: policyName.trim(), details: input.trim() })
     } catch {
       setError('Failed to save policy. Please try again.')
       setIsSaving(false)
     }
-  }, [category, input, policyName, onPolicyCreate])
+  }, [input, policyName, onPolicyCreate])
 
   const isBusy = isCheckingConflict || isSaving
 
@@ -109,32 +103,11 @@ export function CreateWithAI({ onPolicyCreate, onCancel }: CreateWithAIProps) {
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-brand-navy">Create Policy</h2>
           <p className="text-muted-foreground mt-1">
-            Describe your business rule, pick where it applies, and save.
+            Describe your business rule and save.
           </p>
         </div>
 
         <div className="bg-white/95 backdrop-blur-sm rounded-xl border border-gray-200 p-6 shadow-lg space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Applies To *</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as PolicyCategory)}
-              className={cn(
-                'w-full px-4 py-2 rounded-lg border bg-white text-base focus:outline-none focus:ring-2 focus:ring-brand-cornflower/50',
-                category ? 'border-gray-200' : 'border-red-300'
-              )}
-            >
-              <option value="" disabled>
-                Select an orchestrator…
-              </option>
-              {POLICY_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Policy Description *</label>
             <textarea

@@ -12,7 +12,6 @@ import { PolicyCard, type Policy } from '@/components/ai/policies/PolicyCard'
 import { PolicyDetailModal } from '@/components/ai/policies/PolicyDetailModal'
 import { PolicyEditModal } from '@/components/ai/policies/PolicyEditModal'
 import { CreateWithAI } from '@/components/ai/policies/CreateWithAI'
-import { POLICY_CATEGORIES, parsePolicyName, type PolicyCategory } from '@/components/ai/policies/policyCategories'
 
 // ============================================================================
 // Animation Variants
@@ -116,14 +115,14 @@ export default function AIPoliciesPage() {
     }
   }, [loadPolicies])
 
-  const handlePolicyCreate = async (policyData: { category: PolicyCategory; name: string; details: string }) => {
+  const handlePolicyCreate = async (policyData: { name: string; details: string }) => {
     await apiClient.post('/api/policies', policyData)
     await loadPolicies()
     setActiveTab('policies')
   }
 
   // ============================================================================
-  // Filtering, Sorting & Grouping
+  // Filtering & Sorting
   // ============================================================================
 
   const filteredPolicies = policies
@@ -148,16 +147,6 @@ export default function AIPoliciesPage() {
           return 0
       }
     })
-
-  // Grouped by the orchestrator each policy applies to (fixed category order,
-  // with any pre-existing unprefixed policies bucketed last).
-  const UNCATEGORIZED = 'Uncategorized'
-  const groupedPolicies = [...POLICY_CATEGORIES, UNCATEGORIZED]
-    .map((category) => ({
-      category,
-      policies: filteredPolicies.filter((p) => (parsePolicyName(p.name).category ?? UNCATEGORIZED) === category),
-    }))
-    .filter((group) => group.policies.length > 0)
 
   // ============================================================================
   // Stats
@@ -339,27 +328,13 @@ export default function AIPoliciesPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-8">
-                  {groupedPolicies.map((group) => (
-                    <div key={group.category}>
-                      <div className="mb-3 flex items-center gap-2">
-                        <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-brand-navy">
-                          {group.category}
-                        </h3>
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                          {group.policies.length}
-                        </span>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {group.policies.map((policy) => (
-                          <PolicyCard
-                            key={policy.id}
-                            policy={policy}
-                            onClick={handleCardClick}
-                          />
-                        ))}
-                      </div>
-                    </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredPolicies.map((policy) => (
+                    <PolicyCard
+                      key={policy.id}
+                      policy={policy}
+                      onClick={handleCardClick}
+                    />
                   ))}
                 </div>
               )}

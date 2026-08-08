@@ -10,12 +10,6 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/policies", tags=["Policies"])
 
-# Every policy must declare which orchestrator it applies to. There's no
-# separate DB column for this — it's encoded as a "{category} - " prefix on
-# the `name` column (see _build_name/create_policy/update_policy). Keep this
-# list in sync with frontend/src/components/ai/policies/policyCategories.ts.
-POLICY_CATEGORIES = ["Email Scanner", "Automatic Validator", "Manual Validator"]
-
 # The "Policy Conflict Checker" operator on Supervity: fetches existing policies
 # from Supabase and uses an LLM to decide whether a proposed policy conflicts
 # with any of them. Outputs {"status": bool, "message": str} — status=true means
@@ -87,17 +81,6 @@ async def check_policy_conflict(payload: dict):
         raise HTTPException(status_code=502, detail=f"Conflict check unavailable: {e}")
 
 
-def _build_name(category: str | None, name: str | None) -> str:
-    if category not in POLICY_CATEGORIES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"category must be one of: {', '.join(POLICY_CATEGORIES)}",
-        )
-    if not name or not name.strip():
-        raise HTTPException(status_code=400, detail="name is required")
-    return f"{category} - {name.strip()}"
-
-
 @router.get("/")
 async def list_policies():
     try:
@@ -133,9 +116,16 @@ async def create_policy(payload: dict, request: Request):
         if not created_by:
             raise HTTPException(status_code=403, detail="Sign in with an approver account to create a policy.")
 
+        name = payload.get("name")
+        if not name or not name.strip():
+            raise HTTPException(status_code=400, detail="name is required")
+        details = payload.get("details")
+        if not details or not details.strip():
+            raise HTTPException(status_code=400, detail="details is required")
+
         row = {
-            "name": _build_name(payload.get("category"), payload.get("name")),
-            "details": payload.get("details"),
+            "name": name.strip(),
+            "details": details.strip(),
             "created_by": created_by,
         }
         response = supabase.table("policies").insert(row).execute()
@@ -149,13 +139,8 @@ async def create_policy(payload: dict, request: Request):
 @router.put("/{policy_id}")
 async def update_policy(policy_id: int, payload: dict):
     try:
-        # created_by/created_at are immutable. category+name are combined into
-        # the stored `name`, so they're only touched together.
-        row: dict = {}
-        if payload.get("details") is not None:
-            row["details"] = payload["details"]
-        if payload.get("category") is not None or payload.get("name") is not None:
-            row["name"] = _build_name(payload.get("category"), payload.get("name"))
+        # created_by/created_at are immutable — only name/details can change.
+        row = {k: v for k, v in {"name": payload.get("name"), "details": payload.get("details")}.items() if v is not None}
 
         response = (
             supabase.table("policies")
