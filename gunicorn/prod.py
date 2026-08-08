@@ -41,6 +41,12 @@ graceful_timeout = int(os.getenv("GUNICORN_GRACEFUL_TIMEOUT", "30"))
 # Server socket
 bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
 
+# Trust X-Forwarded-Proto/X-Forwarded-For from Cloud Run's edge proxy so
+# request.url.scheme resolves to "https" (otherwise redirects like the
+# trailing-slash normalization build "http://" Location headers, which
+# browsers block as mixed content on an HTTPS page).
+forwarded_allow_ips = "*"
+
 # Preload application code before forking workers
 # This shares memory between workers and catches startup errors early
 preload_app = True
