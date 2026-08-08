@@ -1,0 +1,62 @@
+# frontend/cloudbuild.yaml
+# Builds and deploys the FRONTEND (Next.js) service to Cloud Run.
+# Run from the repo root, pointing the source at ./frontend.
+#
+# NEXT_PUBLIC_* values are baked into the client bundle at build time (via
+# --build-arg) and can't be changed later without a rebuild. NEXTAUTH_URL is
+# ALSO required at build time (NextAuth's route code evaluates it while
+# Next.js prerenders /_not-found — an empty value breaks the build), and is
+# separately set as a runtime env var below since the prod stage of
+# frontend/Dockerfile doesn't inherit build-stage ENV.
+#
+# Cloud Run URLs in this project follow the pattern
+# https://<service>-<project-number>.<region>.run.app, so the frontend's own
+# URL can be predicted before its first deploy — no chicken-and-egg problem.
+#
+# Prerequisite secret:
+#   openssl rand -base64 32 | gcloud secrets create NEXTAUTH_SECRET --data-file=-
+#   Grant the Cloud Build/Cloud Run service account "Secret Manager Secret Accessor".
+#
+# Usage (deploy the backend first so you have its URL):
+#   gcloud builds submit --config frontend/cloudbuild.yaml \
+#     --substitutions=_REGION=asia-southeast1,_SERVICE=autopilot-frontend,_NEXT_PUBLIC_API_URL=https://autopilot-backend-xxxx.run.app,_NEXTAUTH_URL=https://autopilot-frontend-xxxx.run.app \
+#     frontend
+
+substitutions:
+  _REGION: asia-southeast1
+  _SERVICE: autopilot-frontend
+  _NEXT_PUBLIC_API_URL: ""
+  _NEXT_PUBLIC_BASE_PATH: ""
+  _NEXTAUTH_URL: ""
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --target=prod
+      - --build-arg=NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}
+      - --build-arg=NEXT_PUBLIC_BASE_PATH=${_NEXT_PUBLIC_BASE_PATH}
+      - --build-arg=NEXTAUTH_URL=${_NEXTAUTH_URL}
+      - -t=gcr.io/$PROJECT_ID/${_SERVICE}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - gcr.io/$PROJECT_ID/${_SERVICE}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=gcr.io/$PROJECT_ID/${_SERVICE}
+      - --region=${_REGION}
+      - --platform=managed
+      - --set-env-vars=NODE_ENV=production,NEXTAUTH_URL=${_NEXTAUTH_URL},NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}
+      - --set-secrets=NEXTAUTH_SECRET=NEXTAUTH_SECRET:latest
+      - --allow-unauthenticated
+
+images:
+  - gcr.io/$PROJECT_ID/${_SERVICE}
