@@ -1,8 +1,25 @@
-# 🚀 AutoPilot Template
+# 🚀 Gym Facilities Invoice Processor
 
-Your AI Command Center starter kit for the AutoPilot Hackathon.
+An AI-powered accounts payable command center built for multi-branch gym and fitness operators across Southeast Asia — including AnytimeFitness, Chi Fitness, and X Fitness — and the equipment distributors that supply them, such as DO!T.
 
-Build an intelligent, multi-agent command center that automates business processes with AI — while keeping humans in the loop for oversight and exception handling.
+Invoices arrive in three recurring shapes: large one-off **equipment** purchases, ongoing **maintenance** contracts, and recurring **subscription** billing. The system's orchestrators scan for incoming invoices, validate them against configurable AI policies (matched to PO, price, and branch), auto-approve what's safe, and route anything blocked — missing PO, price mismatch, unrecognized branch — to a human reviewer via a manual approval workbench with the specific issue called out. An AI Insights layer surfaces spend patterns across branches and vendors.
+
+Under the hood: FastAPI + PostgreSQL backend, Next.js dashboard, Supabase for data/auth, and [Supervity](https://supervity.ai) for the underlying AI workflow orchestration.
+
+---
+
+## 🌐 Live Deployment
+
+| Service | URL |
+|---------|-----|
+| 🖥️ **Dashboard (public)** | [https://autopilot-frontend-1058209208625.asia-southeast1.run.app](https://autopilot-frontend-1058209208625.asia-southeast1.run.app) |
+| ⚙️ **Backend API** | [https://autopilot-backend-1058209208625.asia-southeast1.run.app](https://autopilot-backend-1058209208625.asia-southeast1.run.app) |
+
+Hosted on Google Cloud Run, region `asia-southeast1` (Singapore). Database and auth run on Supabase; `SUPERVITY_API_KEY` connects to the Supervity workflow API.
+
+> **Security note:** the deployed backend currently runs with `AUTH_BYPASS=true` (same dev-user auto-auth as local dev) — there is no real access control on the public URL yet. Fine for demo purposes, not for handling anything sensitive. Swap in real Keycloak auth (`AUTH_BYPASS=false` + `KEYCLOAK_SERVER_URL`) before wider use.
+
+**Redeploying:** `cloudbuild.yaml` (backend) and `frontend/cloudbuild.yaml` (frontend) at the repo root build and deploy each service via Cloud Build — see the usage comments at the top of each file.
 
 ---
 
@@ -302,13 +319,16 @@ AutoPilot-Template/
 │   └── src/lib/            # API client, utilities
 ├── alembic/                # Database migrations
 ├── scripts/                # Seed data, utilities
+├── gunicorn/               # Gunicorn server configs (dev.py, prod.py)
 ├── docs/                   # Documentation
 │   ├── command-center-guide.md   # ⭐ What to build
 │   ├── hackathon-brief.md        # ⭐ Problem statements
 │   ├── design-system-template.md # UI patterns
 │   └── Audit System Guide.md     # Audit logging
-├── docker-compose.yml      # Service orchestration
+├── docker-compose.yml      # Local dev service orchestration
 ├── Dockerfile              # Backend container
+├── cloudbuild.yaml         # Cloud Run deploy: backend
+├── frontend/cloudbuild.yaml # Cloud Run deploy: frontend
 ├── Makefile                # Dev commands (macOS/Linux)
 └── .env.example            # Environment config template
 ```
