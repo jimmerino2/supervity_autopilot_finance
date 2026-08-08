@@ -7,20 +7,12 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { Icons } from '@/components/ui/icons'
-import { useAI } from '@/context/AIContext'
-import { NotificationCenter } from '@/components/NotificationCenter'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 
 // Breadcrumb helper
 function getBreadcrumbs(pathname: string): { label: string; href: string }[] {
@@ -41,93 +33,6 @@ function getBreadcrumbs(pathname: string): { label: string; href: string }[] {
   })
 
   return breadcrumbs
-}
-
-// Search input component
-function SearchInput({
-  onOpenCommandPalette,
-}: {
-  onOpenCommandPalette?: () => void
-}) {
-  return (
-    <button
-      onClick={onOpenCommandPalette}
-      className={cn(
-        'group flex h-9 w-64 items-center gap-2 px-3',
-        'rounded-full border border-border/50 bg-white/50',
-        'text-sm text-muted-foreground',
-        'transition-all duration-300 ease-out',
-        'hover:border-brand-cornflower/40 hover:bg-white/90 hover:shadow-sm',
-        'hover:w-72',
-        'focus:outline-none focus:ring-2 focus:ring-brand-cornflower/50'
-      )}
-    >
-      <Icons.search
-        className='h-4 w-4 transition-transform duration-200 group-hover:scale-110'
-        strokeWidth={1.5}
-      />
-      <span className='flex-1 text-left'>Search...</span>
-      <kbd
-        className={cn(
-          'hidden h-5 items-center gap-1 rounded px-1.5 sm:inline-flex',
-          'text-[10px] font-medium',
-          'border border-border/50 bg-muted/50 text-muted-foreground',
-          'transition-all duration-200',
-          'group-hover:border-brand-cornflower/30 group-hover:bg-brand-cornflower/10 group-hover:text-brand-navy'
-        )}
-      >
-        <Icons.command className='h-3 w-3' />K
-      </kbd>
-    </button>
-  )
-}
-
-// AI Manager trigger button - styled as a prominent tag/badge
-function AIManagerTrigger() {
-  const { openManager, isManagerOpen } = useAI()
-
-  return (
-    <TooltipProvider>
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <button
-            onClick={openManager}
-            className={cn(
-              'relative flex items-center gap-2 px-3 py-1.5',
-              'rounded-full',
-              'text-sm font-medium',
-              'transition-all duration-200',
-              'bg-gradient-to-r from-brand-navy to-brand-purple',
-              'text-white',
-              'shadow-md shadow-brand-navy/20',
-              'hover:shadow-lg hover:shadow-brand-purple/30',
-              'hover:scale-[1.02]',
-              isManagerOpen && 'ring-2 ring-brand-cornflower ring-offset-2',
-              'focus:outline-none focus:ring-2 focus:ring-brand-cornflower focus:ring-offset-2'
-            )}
-            aria-label='Open AI Manager'
-          >
-            <Icons.sparkles
-              className='h-4 w-4 text-white'
-              strokeWidth={1.5}
-            />
-            <span className='hidden sm:inline'>AI Manager</span>
-            <kbd className={cn(
-              'hidden sm:inline-flex items-center gap-0.5',
-              'px-1.5 py-0.5 rounded',
-              'bg-white/20 text-white/90',
-              'text-[10px] font-medium'
-            )}>
-              <Icons.command className='h-2.5 w-2.5' />J
-            </kbd>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side='bottom' className='sm:hidden'>
-          <span>AI Manager</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
 }
 
 // User menu with dropdown
@@ -300,30 +205,6 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
 
       {/* Right: Actions */}
       <div className='flex items-center gap-1 sm:gap-2'>
-        {/* Search */}
-        <div className='hidden lg:block'>
-          <SearchInput />
-        </div>
-
-        {/* Mobile/tablet search button */}
-        <Button
-          variant='ghost'
-          size='icon-sm'
-          className='text-muted-foreground hover:text-foreground lg:hidden'
-          aria-label='Search'
-        >
-          <Icons.search className='h-5 w-5' strokeWidth={1.5} />
-        </Button>
-
-        {/* AI Manager */}
-        <AIManagerTrigger />
-
-        {/* Notifications */}
-        <NotificationCenter />
-
-        {/* Divider */}
-        <div className='mx-1 hidden h-6 w-px bg-border/60 lg:block' />
-
         {/* User menu */}
         <UserMenu />
       </div>

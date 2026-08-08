@@ -358,7 +358,7 @@ export default function AIAssistantPage() {
               <div>
                 <p className='font-display text-lg font-semibold text-brand-navy'>Ask the AI Assistant</p>
                 <p className='mt-1 max-w-sm text-sm text-muted-foreground'>
-                  Powered by Supervity — send a message below to start a new chat.
+                  Ask about equipment orders, maintenance contracts, or vendor spend across your gym branches.
                 </p>
               </div>
             </div>
@@ -385,7 +385,7 @@ export default function AIAssistantPage() {
           )}
 
           <div className='border-t border-border'>
-            <ChatInput onSend={handleSend} disabled={isSending} placeholder='Message the AI Assistant...' />
+            <ChatInput onSend={handleSend} disabled={isSending} placeholder='Ask about invoices, vendors, or gym branches...' />
           </div>
         </div>
       </motion.div>

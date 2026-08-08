@@ -114,7 +114,7 @@ export default function AIInsightsPage() {
             AI Insights
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            AI-powered analysis of your invoice data. Discover anomalies, risks, and recommendations.
+            AI-powered analysis of your equipment, maintenance, and subscription invoices — surface anomalies, vendor risk, and spend recommendations.
           </p>
         </div>
         <Button

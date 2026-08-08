@@ -184,7 +184,7 @@ function AdminPurchaseOrdersContent() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.folder className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Read-only. View a PO for its line items and goods receipts.</span>
+            <span className='text-sm text-muted-foreground'>Read-only. View an equipment purchase order for its line items and goods receipts.</span>
           </div>
         </div>
 
@@ -203,7 +203,7 @@ function AdminPurchaseOrdersContent() {
         <CardHeader>
           <CardTitle>Purchase Orders</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/purchase_order</code>.
+            Every equipment purchase order raised with your distributors.
           </CardDescription>
         </CardHeader>
         <CardContent>

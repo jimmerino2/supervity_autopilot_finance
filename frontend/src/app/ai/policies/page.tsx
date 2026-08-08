@@ -175,7 +175,7 @@ export default function AIPoliciesPage() {
             AI Policies
           </h1>
           <p className="mt-1 text-lg text-muted-foreground">
-            Define business rules in natural language for the AI to follow.
+            Define approval rules for equipment, maintenance, and subscription invoices — in plain language.
           </p>
         </div>
         <Button

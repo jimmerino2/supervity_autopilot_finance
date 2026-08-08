@@ -11,7 +11,7 @@ const Card = React.forwardRef<
       // Group for child animations
       'group',
       // Base: Glaze effect with gradient background
-      'rounded-2xl bg-gradient-to-b from-white to-[#F8FAFF]',
+      'rounded-2xl bg-gradient-to-b from-white to-[#FBF6F4]',
       // Border: Double-layer effect with white border and subtle ring
       'border border-white/60 ring-1 ring-black/[0.03]',
       // Shadow: Glass effect with inner highlight

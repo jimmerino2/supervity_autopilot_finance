@@ -116,7 +116,7 @@ export default function InvoiceAuditLogPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.fileText className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Automated invoice validation and status change history.</span>
+            <span className='text-sm text-muted-foreground'>Automated validation and status history for equipment, maintenance, and subscription invoices.</span>
           </div>
         </div>
 
@@ -130,7 +130,7 @@ export default function InvoiceAuditLogPage() {
         <CardHeader>
           <CardTitle>Invoice Audit Log</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/invoice_audit_log</code>.
+            A full history of every automated and manual change made to an invoice.
           </CardDescription>
         </CardHeader>
         <CardContent>

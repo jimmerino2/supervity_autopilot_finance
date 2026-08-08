@@ -496,9 +496,8 @@ export function WorkflowRunHealth({ onStatsChange }: WorkflowRunHealthProps) {
         <CardHeader>
           <CardTitle>Agent Health by Workflow</CardTitle>
           <CardDescription>
-            Status counts from <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/supervity/workflow-runs/dashboard/{'{workflow_id}'}</code>,
-            one call per workflow observed in recent runs. Workflows Supervity can no longer return counts for (e.g. archived
-            versions) are shown as &ldquo;Unavailable&rdquo; rather than hidden.
+            Live run counts for each orchestrator seen in recent activity. Orchestrators that are no longer available
+            (e.g. an older or archived version) are shown as &ldquo;Unavailable&rdquo; rather than hidden.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -524,9 +523,7 @@ export function WorkflowRunHealth({ onStatsChange }: WorkflowRunHealthProps) {
         <CardHeader>
           <CardTitle>Recent Runs</CardTitle>
           <CardDescription>
-            Latest {RECENT_RUNS_LIMIT} runs from{' '}
-            <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/supervity/workflow-runs</code>. Select a run to
-            inspect its step-by-step activity.
+            The last {RECENT_RUNS_LIMIT} orchestrator runs. Select one to see its step-by-step activity.
           </CardDescription>
         </CardHeader>
         <CardContent>

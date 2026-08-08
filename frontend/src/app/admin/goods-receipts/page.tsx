@@ -106,7 +106,7 @@ export default function AdminGoodsReceiptsPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.archive className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Material movements posted against purchase order lines.</span>
+            <span className='text-sm text-muted-foreground'>Gym equipment deliveries posted against purchase order lines.</span>
           </div>
         </div>
 
@@ -121,7 +121,7 @@ export default function AdminGoodsReceiptsPage() {
         <CardHeader>
           <CardTitle>Material Documents</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/goods_receipt</code>.
+            Every equipment delivery recorded against a purchase order.
           </CardDescription>
         </CardHeader>
         <CardContent>

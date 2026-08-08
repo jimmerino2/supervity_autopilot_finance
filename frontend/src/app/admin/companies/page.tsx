@@ -87,7 +87,7 @@ export default function AdminCompaniesPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.building className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Legal entities and their reporting currency.</span>
+            <span className='text-sm text-muted-foreground'>Gym operating entities and their reporting currency.</span>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export default function AdminCompaniesPage() {
         <CardHeader>
           <CardTitle>Companies</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/company</code>.
+            Every gym operating entity on file, kept in sync for invoicing and reporting.
           </CardDescription>
         </CardHeader>
         <CardContent>

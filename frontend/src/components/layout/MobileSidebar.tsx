@@ -89,7 +89,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 AutoPilot
               </SheetTitle>
               <span className='text-[10px] font-medium uppercase tracking-widest text-brand-muted'>
-                Command Center
+                Fitness Invoice Ops
               </span>
             </div>
           </Link>

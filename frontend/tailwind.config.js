@@ -66,25 +66,26 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Brand Palette for manual usage
+        // Brand Palette — "Iron & Ember": charcoal steel + performance-orange
+        // accent, tuned for a gym-equipment/fitness-facility invoice operation.
         brand: {
-          black: "#04060A",
-          navy: "#141A42",
-          cornflower: "#8AA2DF",
-          muted: "#848EAA",
-          purple: "#535EA4",
-          light: "#E7E7E7",
+          black: "#0C0A09",
+          navy: "#272320",
+          cornflower: "#F45C25",
+          muted: "#958B83",
+          purple: "#AD361F",
+          light: "#EDEBE9",
           // Additional shades for UI
-          "navy-light": "#1E2654",
-          "cornflower-light": "#A8BCEB",
+          "navy-light": "#3E3632",
+          "cornflower-light": "#F79064",
         }
       },
       // Background gradients
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(135deg, #141A42 0%, #535EA4 100%)',
-        'brand-mesh': 'radial-gradient(at 0% 0%, #535EA4 0px, transparent 50%), radial-gradient(at 100% 100%, #141A42 0px, transparent 50%)',
+        'brand-gradient': 'linear-gradient(135deg, #272320 0%, #AD361F 100%)',
+        'brand-mesh': 'radial-gradient(at 0% 0%, #AD361F 0px, transparent 50%), radial-gradient(at 100% 100%, #272320 0px, transparent 50%)',
         'glass-gradient': 'linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
-        'glaze': 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 100%)',
+        'glaze': 'linear-gradient(180deg, #FFFFFF 0%, #FBF6F4 100%)',
         'shimmer': 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
       },
       // Modern shadow system: strokes + glows instead of heavy shadows

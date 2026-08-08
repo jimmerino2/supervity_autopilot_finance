@@ -206,7 +206,7 @@ export default function AdminVendorsPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.table className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Manage vendors and payment details.</span>
+            <span className='text-sm text-muted-foreground'>Manage equipment distributors, maintenance contractors, and their payment details.</span>
           </div>
         </div>
 
@@ -220,13 +220,13 @@ export default function AdminVendorsPage() {
         <CardHeader>
           <CardTitle>Vendors</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/vendor</code>.
+            Every equipment distributor and maintenance contractor on file, with their payment details.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className='flex items-center justify-between gap-4 pb-4'>
             <div>
-              <p className='text-sm text-muted-foreground'>Manage vendor records and payment metadata.</p>
+              <p className='text-sm text-muted-foreground'>Manage distributor and contractor records and payment metadata.</p>
             </div>
             <Button onClick={openCreateDialog} className='gap-2'>
               <Icons.plus className='h-4 w-4' />

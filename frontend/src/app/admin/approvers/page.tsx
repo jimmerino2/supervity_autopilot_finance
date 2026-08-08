@@ -179,7 +179,7 @@ export default function AdminApproversPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.table className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Review all approval assignments</span>
+            <span className='text-sm text-muted-foreground'>Review approval assignments for equipment, maintenance, and subscription invoices</span>
           </div>
         </div>
 
@@ -193,7 +193,7 @@ export default function AdminApproversPage() {
         <CardHeader>
           <CardTitle>Approvers</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/approval_matrix</code>.
+            Who is authorized to approve invoices for each cost center.
           </CardDescription>
         </CardHeader>
         <CardContent>

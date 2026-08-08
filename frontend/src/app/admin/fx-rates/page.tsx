@@ -87,7 +87,7 @@ export default function AdminFxRatesPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.trendingUp className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Daily currency conversion reference rates.</span>
+            <span className='text-sm text-muted-foreground'>Daily currency conversion rates for cross-border SEA equipment purchases.</span>
           </div>
         </div>
 
@@ -102,7 +102,7 @@ export default function AdminFxRatesPage() {
         <CardHeader>
           <CardTitle>Rates</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/fx_rate</code>.
+            Daily exchange rates used to convert vendor invoices into your reporting currency.
           </CardDescription>
         </CardHeader>
         <CardContent>

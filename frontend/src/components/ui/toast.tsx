@@ -23,7 +23,7 @@ export function ToastProvider() {
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.6)',
           boxShadow: '0 8px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)',
-          color: '#141A42',
+          color: '#272320',
           fontSize: '14px',
           maxWidth: '400px',
         },

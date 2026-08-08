@@ -48,10 +48,10 @@ function HeroSection({ userName }: { userName?: string }) {
     >
       <h1 className='text-display-3 font-bold tracking-tight text-brand-navy lg:text-display-2'>
         Where Intelligence <br className='hidden sm:block' />
-        <span className='text-gradient'>Meets Human.</span>
+        <span className='text-gradient'>Meets Muscle.</span>
       </h1>
       <p className='mt-4 text-lg font-light text-muted-foreground'>
-        Welcome back, {firstName}. Your AI Command Center is ready.
+        Welcome back, {firstName}. Your gym equipment, maintenance, and subscription invoice command center is ready.
       </p>
     </motion.div>
   )

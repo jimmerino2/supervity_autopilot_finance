@@ -55,7 +55,7 @@ export default function WorkbenchPage() {
           Invoice Orchestrators
         </h1>
         <p className='mt-2 text-lg text-muted-foreground'>
-          Master orchestrators for the invoice pipeline — from scanning inboxes to issuing payments.
+          Master orchestrators for gym equipment, maintenance, and subscription invoices — from scanning inboxes to issuing vendor payments.
         </p>
       </motion.div>
 

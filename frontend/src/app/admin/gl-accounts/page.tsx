@@ -199,7 +199,7 @@ export default function AdminGlAccountsPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.table2 className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Chart-of-accounts entries and their allowed cost centers.</span>
+            <span className='text-sm text-muted-foreground'>Chart-of-accounts entries for equipment, maintenance, and subscriptions, and their allowed cost centers.</span>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ export default function AdminGlAccountsPage() {
         <CardHeader>
           <CardTitle>GL Accounts</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/gl_account</code>.
+            Every account available for coding equipment, maintenance, and subscription invoices.
           </CardDescription>
         </CardHeader>
         <CardContent>

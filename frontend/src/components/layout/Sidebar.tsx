@@ -113,6 +113,7 @@ const navItems: NavSection[] = [
     items: [
       { href: '/settings', label: 'Settings', icon: Icons.settings },
       { href: '/admin/approvers', label: 'Approvers', icon: Icons.table },
+      { href: '/about', label: 'About', icon: Icons.info },
     ],
   },
 ]
@@ -301,7 +302,7 @@ export function Sidebar() {
                   AutoPilot
                 </span>
                 <span className='text-[10px] font-medium uppercase tracking-widest text-brand-muted'>
-                  Command Center
+                  Fitness Invoice Ops
                 </span>
               </div>
             )}

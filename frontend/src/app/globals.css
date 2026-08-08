@@ -4,56 +4,57 @@
 
 @layer base {
   :root {
-    /* 
-      LUMINOUS COMMAND CENTER - LIGHT MODE
-      "Sophisticated Light" aesthetic with Cornflower-tinted whites
+    /*
+      IRON & EMBER - LIGHT MODE
+      Gym-equipment-inspired "Sophisticated Athletic" aesthetic:
+      warm steel/charcoal neutrals with a performance-orange accent.
     */
-    
-    /* Background: #F5F7FF (Cornflower-tinted white) - NOT flat gray */
-    --background: 225 60% 98.5%;
-    
-    /* Foreground: #141A42 (Deep Navy) - Premium ink color */
-    --foreground: 232 53% 17%;
+
+    /* Background: #FBFAF9 (warm chalk-white) - NOT flat gray */
+    --background: 30 25% 98%;
+
+    /* Foreground: #272320 (Iron Charcoal) - Premium ink color */
+    --foreground: 20 10% 14%;
 
     /* Card: Pure white with glaze overlay effect */
     --card: 0 0% 100%;
-    --card-foreground: 232 53% 17%;
+    --card-foreground: 20 10% 14%;
 
     /* Popover: Same as card */
     --popover: 0 0% 100%;
-    --popover-foreground: 232 53% 17%;
+    --popover-foreground: 20 10% 14%;
 
-    /* Primary: #141A42 (Deep Navy) - Main brand anchor */
-    --primary: 232 53% 17%;
+    /* Primary: #272320 (Iron Charcoal) - Main brand anchor */
+    --primary: 20 10% 14%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Soft blue-grey for secondary actions */
-    --secondary: 225 25% 95%;
-    --secondary-foreground: 232 53% 17%;
+    /* Secondary: Soft warm-grey for secondary actions */
+    --secondary: 30 15% 95%;
+    --secondary-foreground: 20 10% 14%;
 
-    /* Muted: Refined slate-blue for labels */
-    --muted: 224 20% 96%;
-    --muted-foreground: 224 20% 50%;
+    /* Muted: Refined steel-grey for labels */
+    --muted: 30 12% 95%;
+    --muted-foreground: 25 8% 45%;
 
-    /* Accent: #8AA2DF (Cornflower Blue) - Highlights & active states */
-    --accent: 223 54% 71%;
-    --accent-foreground: 232 53% 17%;
+    /* Accent: #F45C25 (Ember Orange) - Highlights & active states */
+    --accent: 16 90% 55%;
+    --accent-foreground: 0 0% 100%;
 
     /* Destructive */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders: Soft #E8EBF2 - Not harsh gray */
-    --border: 220 20% 92%;
-    --input: 220 20% 90%;
-    --ring: 223 54% 71%;
+    /* Borders: Soft warm grey - Not harsh gray */
+    --border: 30 12% 90%;
+    --input: 30 12% 88%;
+    --ring: 16 90% 55%;
 
     /* Chart Palette */
-    --chart-1: 232 53% 17%; /* Navy */
-    --chart-2: 223 54% 71%; /* Cornflower */
-    --chart-3: 232 33% 48%; /* Purple */
-    --chart-4: 222 75% 66%; /* Vibrant Blue */
-    --chart-5: 224 20% 59%; /* Muted Blue */
+    --chart-1: 20 10% 14%; /* Iron Charcoal */
+    --chart-2: 16 90% 55%; /* Ember Orange */
+    --chart-3: 10 70% 40%; /* Deep Rust */
+    --chart-4: 30 95% 60%; /* Amber Gold */
+    --chart-5: 25 8% 55%;  /* Steel Grey */
 
     /* Radius: Soft, modern feel */
     --radius: 0.75rem;
@@ -103,14 +104,14 @@
   }
   
   .glass-hover {
-    box-shadow: 
+    box-shadow:
       inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
-      0 0 0 1px rgba(138, 162, 223, 0.3);
+      0 0 0 1px rgba(244, 92, 37, 0.3);
   }
-  
+
   /* Card glaze effect */
   .glaze {
-    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 100%);
+    background: linear-gradient(180deg, #FFFFFF 0%, #FBF6F4 100%);
   }
   
   /* Text gradient utility */
@@ -123,7 +124,7 @@
     background: linear-gradient(
       90deg,
       hsl(var(--muted)) 0%,
-      hsl(225 25% 97%) 50%,
+      hsl(30 15% 97%) 50%,
       hsl(var(--muted)) 100%
     );
     background-size: 200% 100%;

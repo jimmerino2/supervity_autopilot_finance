@@ -354,7 +354,7 @@ export default function AdminPriceConditionsPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.flag className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Pricing condition records (base price, freight, surcharges).</span>
+            <span className='text-sm text-muted-foreground'>Equipment pricing conditions (base price, freight, surcharges) by distributor.</span>
           </div>
         </div>
 
@@ -370,7 +370,7 @@ export default function AdminPriceConditionsPage() {
         <CardHeader>
           <CardTitle>Conditions</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/price_condition</code>.
+            Negotiated pricing terms — base price, freight, surcharges — for each distributor.
           </CardDescription>
         </CardHeader>
         <CardContent>

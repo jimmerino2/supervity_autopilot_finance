@@ -68,7 +68,7 @@ export default function AdminInvoicesPage() {
           </div>
           <div className='flex items-center gap-2'>
             <Icons.fileText className='h-6 w-6 text-brand-navy' />
-            <span className='text-sm text-muted-foreground'>Read-only view of invoice records.</span>
+            <span className='text-sm text-muted-foreground'>Read-only view of gym equipment, maintenance, and subscription invoice records.</span>
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function AdminInvoicesPage() {
         <CardHeader>
           <CardTitle>Invoices</CardTitle>
           <CardDescription>
-            Records are loaded from the backend endpoint <code className='rounded-md bg-slate-100 px-1 py-0.5 text-xs'>/api/invoice</code>.
+            Every equipment, maintenance, and subscription invoice currently on file.
           </CardDescription>
         </CardHeader>
         <CardContent>
