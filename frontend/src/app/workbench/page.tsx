@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CardWatermark } from '@/components/ui/card-watermark'
 import { Icons } from '@/components/ui/icons'
 import { OrchestratorCard, type OrchestratorStatus } from '@/components/workbench/OrchestratorCard'
+import { UserFormsList } from '@/components/workbench/UserFormsList'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -110,6 +111,10 @@ export default function WorkbenchPage() {
         {orchestrators.map((orch) => (
           <OrchestratorCard key={orch.key} status={orch} onRunComplete={loadStatus} />
         ))}
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <UserFormsList />
       </motion.div>
     </motion.div>
   )

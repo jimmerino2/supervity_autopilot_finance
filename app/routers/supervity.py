@@ -293,6 +293,26 @@ async def get_form(form_id: str):
         _raise_from(e)
 
 
+# Placeholder for the "send email to customer" operator triggered by the
+# "Send email to customer" checkbox on the Invoice Manual Approval Requests
+# review form — the workflow ID will be provided later. Until then this
+# responds 501 rather than silently no-op'ing or failing unclearly.
+NOTIFY_CUSTOMER_WORKFLOW_ID: Optional[str] = None
+
+
+@router.post("/user-forms/{activity_run_id}/notify-customer")
+async def notify_customer(activity_run_id: str, payload: dict):
+    # NOTE: this literal-path route must stay registered before the
+    # generic /user-forms/{activity_run_id}/{status} route below, otherwise
+    # FastAPI matches "notify-customer" as the {status} path param instead.
+    if not NOTIFY_CUSTOMER_WORKFLOW_ID:
+        raise HTTPException(status_code=501, detail="Customer notification operator is not configured yet.")
+    try:
+        return await execute_workflow(NOTIFY_CUSTOMER_WORKFLOW_ID, inputs=payload)
+    except Exception as e:
+        _raise_from(e)
+
+
 @router.post("/user-forms/{activity_run_id}/{status}")
 async def submit_form(activity_run_id: str, status: str, body: SubmitFormBody):
     """Wraps Supervity's raw HTML confirmation page as {"html": ...}, matching the
