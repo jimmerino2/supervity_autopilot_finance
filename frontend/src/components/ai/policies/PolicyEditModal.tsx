@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Icons } from '@/components/ui/icons'
 import { apiClient } from '@/lib/api-client'
 import type { Policy } from './PolicyCard'
+import { POLICY_CATEGORIES, parsePolicyName, type PolicyCategory } from './policyCategories'
 
 // ============================================================================
 // Types
@@ -20,6 +21,7 @@ interface PolicyEditModalProps {
 }
 
 interface FormData {
+  category: PolicyCategory | ''
   name: string
   details: string
 }
@@ -45,16 +47,17 @@ const modalVariants = {
 // ============================================================================
 
 export function PolicyEditModal({ policy, isOpen, onClose, onSave }: PolicyEditModalProps) {
-  const [formData, setFormData] = useState<FormData>({ name: '', details: '' })
+  const [formData, setFormData] = useState<FormData>({ category: '', name: '', details: '' })
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Initialize form when policy changes
   useEffect(() => {
     if (policy) {
-      setFormData({ name: policy.name, details: policy.details })
+      const { category, name } = parsePolicyName(policy.name)
+      setFormData({ category: category ?? '', name, details: policy.details })
     } else {
-      setFormData({ name: '', details: '' })
+      setFormData({ category: '', name: '', details: '' })
     }
     setError(null)
   }, [policy])
@@ -76,11 +79,15 @@ export function PolicyEditModal({ policy, isOpen, onClose, onSave }: PolicyEditM
 
   const handleSave = useCallback(async () => {
     if (!formData.name.trim() || !formData.details.trim()) return
+    if (!formData.category) {
+      setError('Select which orchestrator this policy applies to before saving.')
+      return
+    }
 
     setIsSaving(true)
     setError(null)
     try {
-      const payload = { name: formData.name.trim(), details: formData.details.trim() }
+      const payload = { category: formData.category, name: formData.name.trim(), details: formData.details.trim() }
       const savedPolicy = policy
         ? await apiClient.put<Policy>(`/api/policies/${policy.id}`, payload)
         : await apiClient.post<Policy>('/api/policies', payload)
@@ -141,6 +148,28 @@ export function PolicyEditModal({ policy, isOpen, onClose, onSave }: PolicyEditM
 
           {/* Content */}
           <div className="p-6 space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Applies To *</label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value as FormData['category'] }))}
+                className={cn(
+                  'w-full px-3 py-2 rounded-lg border bg-white',
+                  'text-sm focus:outline-none focus:ring-2 focus:ring-brand-cornflower/50',
+                  formData.category ? 'border-input' : 'border-red-300'
+                )}
+              >
+                <option value="" disabled>
+                  Select an orchestrator…
+                </option>
+                {POLICY_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">Policy Name *</label>
               <input

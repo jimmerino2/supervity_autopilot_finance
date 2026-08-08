@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Icons } from '@/components/ui/icons'
+import { parsePolicyName } from './policyCategories'
 
 // ============================================================================
 // Types — mirrors the `policies` table in Supabase
@@ -38,6 +39,8 @@ const formatDate = (dateStr: string) => {
 // ============================================================================
 
 export function PolicyCard({ policy, onClick }: PolicyCardProps) {
+  const { category, name } = parsePolicyName(policy.name)
+
   return (
     <motion.div
       onClick={() => onClick(policy)}
@@ -62,9 +65,16 @@ export function PolicyCard({ policy, onClick }: PolicyCardProps) {
         <div className={cn('mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg', 'bg-brand-cornflower/10')}>
           <Icons.layers className="h-4 w-4 text-brand-cornflower" />
         </div>
-        <h3 className="font-semibold text-brand-navy line-clamp-1 text-sm group-hover:text-brand-cornflower transition-colors duration-200 mt-1.5">
-          {policy.name}
-        </h3>
+        <div className="min-w-0 mt-0.5">
+          {category && (
+            <span className="inline-block mb-0.5 rounded-full bg-brand-cornflower/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-cornflower">
+              {category}
+            </span>
+          )}
+          <h3 className="font-semibold text-brand-navy line-clamp-1 text-sm group-hover:text-brand-cornflower transition-colors duration-200">
+            {name}
+          </h3>
+        </div>
       </div>
 
       {/* Details - Fixed lines */}
