@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { apiClient } from '@/lib/api-client'
-import { Card, CardContent } from '@/components/ui/card'
-import { CardWatermark } from '@/components/ui/card-watermark'
 import { Icons } from '@/components/ui/icons'
 import { OrchestratorCard, type OrchestratorStatus } from '@/components/workbench/OrchestratorCard'
 import { UserFormsList } from '@/components/workbench/UserFormsList'
@@ -18,24 +16,14 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
-interface InvoiceCounts {
-  parked: number
-  pendingApproval: number
-}
-
 export default function WorkbenchPage() {
   const [isLoadingInitial, setIsLoadingInitial] = useState(true)
-  const [invoiceCounts, setInvoiceCounts] = useState<InvoiceCounts | null>(null)
   const [orchestrators, setOrchestrators] = useState<OrchestratorStatus[]>([])
   const [initialError, setInitialError] = useState<string | null>(null)
 
   const loadStatus = useCallback(async () => {
     try {
-      const [countsData, statusData] = await Promise.all([
-        apiClient.get<InvoiceCounts>('/api/orchestrator/invoice-counts'),
-        apiClient.get<{ orchestrators: OrchestratorStatus[] }>('/api/orchestrator/status'),
-      ])
-      setInvoiceCounts(countsData)
+      const statusData = await apiClient.get<{ orchestrators: OrchestratorStatus[] }>('/api/orchestrator/status')
       setOrchestrators(statusData.orchestrators)
       setInitialError(null)
     } catch (err) {
@@ -66,7 +54,7 @@ export default function WorkbenchPage() {
           Invoice Orchestrators
         </h1>
         <p className='mt-2 text-lg text-muted-foreground'>
-          Master orchestrators for the invoice pipeline — scanning inboxes and validating parked invoices.
+          Master orchestrators for the invoice pipeline — from scanning inboxes to issuing payments.
         </p>
       </motion.div>
 
@@ -79,35 +67,7 @@ export default function WorkbenchPage() {
         </motion.div>
       )}
 
-      <motion.div variants={itemVariants} className='grid gap-4 sm:grid-cols-2'>
-        <Card className='relative overflow-hidden'>
-          <CardWatermark opacity={2} scale={0.8} />
-          <CardContent className='relative z-10 flex items-center gap-4 py-6'>
-            <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100'>
-              <Icons.fileText className='h-6 w-6 text-amber-600' strokeWidth={1.5} />
-            </div>
-            <div>
-              <p className='text-2xl font-bold text-brand-navy'>{invoiceCounts?.parked ?? '—'}</p>
-              <p className='text-sm text-muted-foreground'>Parked Invoices</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='relative overflow-hidden'>
-          <CardWatermark opacity={2} scale={0.8} />
-          <CardContent className='relative z-10 flex items-center gap-4 py-6'>
-            <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100'>
-              <Icons.clock className='h-6 w-6 text-blue-600' strokeWidth={1.5} />
-            </div>
-            <div>
-              <p className='text-2xl font-bold text-brand-navy'>{invoiceCounts?.pendingApproval ?? '—'}</p>
-              <p className='text-sm text-muted-foreground'>Pending Approval</p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <motion.div variants={itemVariants} className='grid gap-6 lg:grid-cols-2'>
+      <motion.div variants={itemVariants} className='grid gap-6 lg:grid-cols-2 xl:grid-cols-4'>
         {orchestrators.map((orch) => (
           <OrchestratorCard key={orch.key} status={orch} onRunComplete={loadStatus} />
         ))}

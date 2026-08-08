@@ -16,21 +16,51 @@ router = APIRouter(prefix="/orchestrator", tags=["Orchestrator"])
 # another run of the same operator until the current one finishes.
 _ACTIVE_STATUSES = {"running", "waiting", "scheduled"}
 
-# The two master orchestrators surfaced in the Workbench, each pinned to a
-# specific Supervity workflow.
+# The master orchestrators surfaced in the Workbench, each pinned to a
+# specific Supervity workflow. `related_status` names the invoices.status
+# value shown as a live count alongside that card (None if not applicable).
+# `workflow_id: None` marks a placeholder — not runnable yet, no Supervity
+# lookups attempted for it.
 ORCHESTRATORS = {
     "outlook-extraction": {
         "workflow_id": "019fd177-01cf-7001-9b7a-7a2408784ac4",
-        "name": "Invoice Outlook Extraction",
+        "name": "Scan Outlook for Invoices",
         "description": "Scans Outlook for invoice emails and logs new invoices into Supabase as parked.",
         "inputs": {},
+        "related_status": None,
+        "batch_note": None,
     },
     "invoice-pending-open": {
         "workflow_id": "019fdc8c-fb68-7000-815c-778caf0763b2",
-        "name": "Invoice Pending/Open",
+        "name": "Validate Parked Invoices",
         "description": "Validates parked invoices and updates them to open or pending approval.",
         "inputs": {"submitted_by": "Supervity Auto"},
+        "related_status": "parked",
+        "batch_note": "Processes up to 100 invoices per run.",
     },
+    "manual-validation": {
+        "workflow_id": "019fe02b-eaa1-7000-bf92-0a6bad1a5c47",
+        "name": "Generate Invoice Review Forms",
+        "description": "Reviews blocked invoices and generates Invoice Manual Approval Requests for a human reviewer.",
+        "inputs": {},
+        "related_status": "pending approval",
+        "batch_note": "Generates up to 5 review requests per run.",
+    },
+    "issue-payments": {
+        "workflow_id": None,  # TODO: set once this operator is created on Supervity
+        "name": "Issue Payments",
+        "description": "Updates open invoices to closed and emails vendors when enabled by policy.",
+        "inputs": {},
+        "related_status": "open",
+        "batch_note": "Processes up to 100 invoices per run.",
+    },
+}
+
+# Maps each orchestrator's related_status to a display label for its count.
+_STATUS_LABELS = {
+    "parked": "Parked Invoices",
+    "pending approval": "Pending Approval",
+    "open": "Open Invoices",
 }
 
 
@@ -53,19 +83,19 @@ def _count_invoices_with_status(status: str) -> int:
 
 @router.get("/invoice-counts")
 async def get_invoice_counts():
-    """Counts by status relevant to the invoice orchestrators: 'parked' is the
-    pool the Invoice Pending/Open orchestrator picks up (capped at the first
-    100); 'pending approval' is what it produces for invoices with errors."""
+    """Counts by status relevant to the invoice orchestrators."""
     return {
         "parked": _count_invoices_with_status("parked"),
         "pendingApproval": _count_invoices_with_status("pending approval"),
+        "open": _count_invoices_with_status("open"),
     }
 
 
 @router.get("/status")
 async def get_orchestrators_status():
     """For each known orchestrator: whether a run is currently in flight
-    (gates the Run button) and its configured schedule, if any."""
+    (gates the Run button), its configured schedule if any, and — when
+    related_status is set — a live count of invoices in that status."""
     try:
         schedules_response = await get_schedules(limit=100)
     except Exception as e:
@@ -77,15 +107,25 @@ async def get_orchestrators_status():
     for key, orchestrator in ORCHESTRATORS.items():
         workflow_id = orchestrator["workflow_id"]
 
-        try:
-            runs_response = await get_workflow_runs(workflow_id=workflow_id, page=1, limit=1)
-            latest_run = (runs_response.get("workflowRuns") or [None])[0]
-        except Exception as e:
-            log.warning(f"Unable to load latest run for {workflow_id}: {e}")
-            latest_run = None
+        is_active = False
+        latest_run = None
+        schedule = None
 
-        is_active = bool(latest_run and latest_run.get("status") in _ACTIVE_STATUSES)
-        schedule = schedules_by_workflow.get(workflow_id)
+        if workflow_id:
+            try:
+                runs_response = await get_workflow_runs(workflow_id=workflow_id, page=1, limit=1)
+                latest_run = (runs_response.get("workflowRuns") or [None])[0]
+            except Exception as e:
+                log.warning(f"Unable to load latest run for {workflow_id}: {e}")
+            is_active = bool(latest_run and latest_run.get("status") in _ACTIVE_STATUSES)
+            schedule = schedules_by_workflow.get(workflow_id)
+
+        related_status = orchestrator["related_status"]
+        related_count = (
+            {"label": _STATUS_LABELS.get(related_status, related_status), "count": _count_invoices_with_status(related_status)}
+            if related_status
+            else None
+        )
 
         result.append(
             {
@@ -93,8 +133,11 @@ async def get_orchestrators_status():
                 "workflowId": workflow_id,
                 "name": orchestrator["name"],
                 "description": orchestrator["description"],
+                "batchNote": orchestrator["batch_note"],
+                "isConfigured": workflow_id is not None,
                 "isActive": is_active,
                 "latestRun": latest_run,
+                "relatedCount": related_count,
                 "schedule": {
                     "description": schedule.get("description"),
                     "isPaused": schedule.get("isPaused"),
@@ -113,6 +156,8 @@ async def run_orchestrator_stream(key: str):
     """SSE-streamed execution of the given orchestrator — proxies Supervity's
     stream back to the caller."""
     orchestrator = _get_orchestrator(key)
+    if not orchestrator["workflow_id"]:
+        raise HTTPException(status_code=501, detail=f"'{orchestrator['name']}' is not configured yet.")
 
     async def event_generator():
         try:

@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Icons } from '@/components/ui/icons'
 
@@ -93,6 +94,71 @@ function getReasonHints(blockedReason: string): { code: string; hint: string }[]
 }
 
 // ============================================================================
+// Additional data — the form's own HTML only embeds 7 fields. The "Doc
+// Number" it gives us is the real invoices.invoice_doc_no key, so we pull
+// the full record from our own API for richer review context (amount, PO,
+// dates, bank account, etc). Best-effort: a failed/slow lookup just means
+// that invoice's card shows the base 7 fields without the extra section.
+// ============================================================================
+
+interface InvoiceDetail {
+  invoice_doc_no: number
+  po_id: number | null
+  document_date: string | null
+  posting_date: string | null
+  amount: string | null
+  tax_amount: number | null
+  source_channel: string | null
+  bank_account_on_invoice: string | null
+  gl_account_code: string | null
+  extraction_confidence: number | null
+  po_currency: string | null
+}
+
+const ADDITIONAL_FIELDS: { key: keyof InvoiceDetail; label: string; format?: (v: unknown) => string }[] = [
+  { key: 'amount', label: 'Amount' },
+  { key: 'po_id', label: 'PO ID' },
+  { key: 'po_currency', label: 'PO Currency' },
+  { key: 'document_date', label: 'Document Date' },
+  { key: 'posting_date', label: 'Posting Date' },
+  { key: 'tax_amount', label: 'Tax Amount' },
+  { key: 'source_channel', label: 'Source Channel' },
+  { key: 'bank_account_on_invoice', label: 'Bank Account' },
+  { key: 'gl_account_code', label: 'GL Account' },
+  {
+    key: 'extraction_confidence',
+    label: 'Extraction Confidence',
+    format: (v) => (typeof v === 'number' ? `${Math.round(v * 100)}%` : '—'),
+  },
+]
+
+function useInvoiceDetails(docNumbers: string[]) {
+  const [details, setDetails] = useState<Record<string, InvoiceDetail | null>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const key = docNumbers.join(',')
+
+  useEffect(() => {
+    let cancelled = false
+    setIsLoading(true)
+    Promise.allSettled(docNumbers.map((doc) => apiClient.get<InvoiceDetail>(`/api/invoice/${doc}`))).then((results) => {
+      if (cancelled) return
+      const next: Record<string, InvoiceDetail | null> = {}
+      results.forEach((result, idx) => {
+        next[docNumbers[idx]] = result.status === 'fulfilled' ? result.value : null
+      })
+      setDetails(next)
+      setIsLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return { details, isLoading }
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -107,6 +173,9 @@ export function InvoiceReviewForm({ parsed, onSubmit, isSubmitting }: InvoiceRev
   const [statuses, setStatuses] = useState<Record<string, string>>({})
   const [reasons, setReasons] = useState<Record<string, string>>({})
   const [notifyCustomer, setNotifyCustomer] = useState(false)
+
+  const docNumbers = useMemo(() => parsed.invoices.map((inv) => inv.docNumber), [parsed.invoices])
+  const { details, isLoading: detailsLoading } = useInvoiceDetails(docNumbers)
 
   const allStatusesChosen = useMemo(
     () => parsed.invoices.every((inv) => Boolean(statuses[inv.docNumber])),
@@ -178,6 +247,31 @@ export function InvoiceReviewForm({ parsed, onSubmit, isSubmitting }: InvoiceRev
                     </div>
                   ))}
                 </div>
+
+                {detailsLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Icons.loader className="h-3.5 w-3.5 animate-spin" />
+                    Loading additional details…
+                  </div>
+                ) : details[inv.docNumber] ? (
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Additional Details
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-dashed border-border p-3 sm:grid-cols-3">
+                      {ADDITIONAL_FIELDS.map(({ key, label, format }) => {
+                        const value = details[inv.docNumber]?.[key]
+                        if (value === null || value === undefined || value === '') return null
+                        return (
+                          <div key={key} className="text-sm">
+                            <span className="text-muted-foreground">{label}: </span>
+                            <span className="font-medium text-foreground">{format ? format(value) : String(value)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>

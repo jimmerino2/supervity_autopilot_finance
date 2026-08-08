@@ -14,11 +14,14 @@ import { Icons } from '@/components/ui/icons'
 
 export interface OrchestratorStatus {
   key: string
-  workflowId: string
+  workflowId: string | null
   name: string
   description: string
+  batchNote: string | null
+  isConfigured: boolean
   isActive: boolean
   latestRun: { id: string; status: string; createdAt: string; updatedAt: string } | null
+  relatedCount: { label: string; count: number } | null
   schedule: { description: string | null; isPaused: boolean | null; timezone: string | null } | null
 }
 
@@ -59,9 +62,10 @@ export function OrchestratorCard({ status, onRunComplete }: OrchestratorCardProp
   const [runError, setRunError] = useState<string | null>(null)
   const [result, setResult] = useState<OrchestratorResult | null>(null)
 
-  const isBlocked = status.isActive || isRunning
+  const isBlocked = !status.isConfigured || status.isActive || isRunning
 
   const handleRun = useCallback(async () => {
+    if (!status.isConfigured) return
     setIsRunning(true)
     setRunError(null)
     setResult(null)
@@ -111,7 +115,7 @@ export function OrchestratorCard({ status, onRunComplete }: OrchestratorCardProp
       setIsRunning(false)
       onRunComplete()
     }
-  }, [status.key, onRunComplete])
+  }, [status.key, status.isConfigured, onRunComplete])
 
   const activityRuns = result?.workflowRun?.activityRuns ?? []
   const lastStep = activityRuns[activityRuns.length - 1]
@@ -138,13 +142,21 @@ export function OrchestratorCard({ status, onRunComplete }: OrchestratorCardProp
             onClick={handleRun}
             disabled={isBlocked}
             className='flex-shrink-0'
-            title={status.isActive && !isRunning ? 'A run is already in progress for this operator' : undefined}
+            title={
+              !status.isConfigured
+                ? 'This operator is not configured yet'
+                : status.isActive && !isRunning
+                  ? 'A run is already in progress for this operator'
+                  : undefined
+            }
           >
             {isRunning ? (
               <>
                 <Icons.loader className='mr-2 h-4 w-4 animate-spin' />
                 Running...
               </>
+            ) : !status.isConfigured ? (
+              'Not Configured'
             ) : status.isActive ? (
               <>
                 <Icons.loader className='mr-2 h-4 w-4 animate-spin' />
@@ -158,8 +170,22 @@ export function OrchestratorCard({ status, onRunComplete }: OrchestratorCardProp
             )}
           </Button>
         </div>
+
+        {status.relatedCount && (
+          <div className='mt-3 flex items-baseline gap-2'>
+            <span className='text-2xl font-bold text-brand-navy'>{status.relatedCount.count}</span>
+            <span className='text-xs text-muted-foreground'>{status.relatedCount.label}</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent className='space-y-4'>
+        {status.batchNote && (
+          <div className='flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground'>
+            <Icons.layers className='h-3.5 w-3.5 flex-shrink-0' />
+            {status.batchNote}
+          </div>
+        )}
+
         {status.schedule && (
           <div className='flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground'>
             <Icons.clock className='h-3.5 w-3.5 flex-shrink-0' />
