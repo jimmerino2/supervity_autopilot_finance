@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import httpx
 
-from app.core.supabase import supabase
+from app.core.supabase import supabase, SUPABASE_URL, SUPABASE_KEY, SUPABASE_USERNAME, SUPABASE_PASSWORD
 from app.services.supervity import execute_workflow_stream, get_workflow_runs, get_schedules
 
 log = logging.getLogger(__name__)
@@ -16,18 +16,27 @@ router = APIRouter(prefix="/orchestrator", tags=["Orchestrator"])
 # another run of the same operator until the current one finishes.
 _ACTIVE_STATUSES = {"running", "waiting", "scheduled"}
 
+# Passed as runtime `envs` on execute so the "Generate Invoice Review Forms"
+# workflow's Supabase step authenticates with this app's credentials. Names on
+# the right are the exact env var names the workflow reads (per its Supervity
+# config), which differ from the naming used by other workflows (e.g. policies.py).
+_MANUAL_VALIDATION_ENVS = {
+    "SUPABASE_URL": SUPABASE_URL,
+    "SUPABASE_API_KEY": SUPABASE_KEY,
+    "SUPABASE_USERNAME": SUPABASE_USERNAME,
+    "SUPABASE_PASSWORD": SUPABASE_PASSWORD,
+}
+
 # The master orchestrators surfaced in the Workbench, each pinned to a
-# specific Supervity workflow. `related_status` names the invoices.status
-# value shown as a live count alongside that card (None if not applicable).
-# `workflow_id: None` marks a placeholder — not runnable yet, no Supervity
-# lookups attempted for it.
+# specific Supervity workflow. `workflow_id: None` marks a placeholder — not
+# runnable yet, no Supervity lookups attempted for it.
 ORCHESTRATORS = {
     "outlook-extraction": {
         "workflow_id": "019fd177-01cf-7001-9b7a-7a2408784ac4",
         "name": "Scan Outlook for Invoices",
         "description": "Scans Outlook for invoice emails and logs new invoices into Supabase as parked.",
         "inputs": {},
-        "related_status": None,
+        "envs": {},
         "batch_note": None,
     },
     "invoice-pending-open": {
@@ -35,7 +44,7 @@ ORCHESTRATORS = {
         "name": "Validate Parked Invoices",
         "description": "Validates parked invoices and updates them to open or pending approval.",
         "inputs": {"submitted_by": "Supervity Auto"},
-        "related_status": "parked",
+        "envs": {},
         "batch_note": "Processes up to 100 invoices per run.",
     },
     "manual-validation": {
@@ -43,7 +52,7 @@ ORCHESTRATORS = {
         "name": "Generate Invoice Review Forms",
         "description": "Reviews blocked invoices and generates Invoice Manual Approval Requests for a human reviewer.",
         "inputs": {},
-        "related_status": "pending approval",
+        "envs": _MANUAL_VALIDATION_ENVS,
         "batch_note": "Generates up to 5 review requests per run.",
     },
     "issue-payments": {
@@ -51,16 +60,9 @@ ORCHESTRATORS = {
         "name": "Issue Payments",
         "description": "Updates open invoices to closed and emails vendors when enabled by policy.",
         "inputs": {},
-        "related_status": "open",
+        "envs": {},
         "batch_note": "Processes up to 100 invoices per run.",
     },
-}
-
-# Maps each orchestrator's related_status to a display label for its count.
-_STATUS_LABELS = {
-    "parked": "Parked Invoices",
-    "pending approval": "Pending Approval",
-    "open": "Open Invoices",
 }
 
 
@@ -94,8 +96,7 @@ async def get_invoice_counts():
 @router.get("/status")
 async def get_orchestrators_status():
     """For each known orchestrator: whether a run is currently in flight
-    (gates the Run button), its configured schedule if any, and — when
-    related_status is set — a live count of invoices in that status."""
+    (gates the Run button), and its configured schedule if any."""
     try:
         schedules_response = await get_schedules(limit=100)
     except Exception as e:
@@ -120,13 +121,6 @@ async def get_orchestrators_status():
             is_active = bool(latest_run and latest_run.get("status") in _ACTIVE_STATUSES)
             schedule = schedules_by_workflow.get(workflow_id)
 
-        related_status = orchestrator["related_status"]
-        related_count = (
-            {"label": _STATUS_LABELS.get(related_status, related_status), "count": _count_invoices_with_status(related_status)}
-            if related_status
-            else None
-        )
-
         result.append(
             {
                 "key": key,
@@ -137,7 +131,6 @@ async def get_orchestrators_status():
                 "isConfigured": workflow_id is not None,
                 "isActive": is_active,
                 "latestRun": latest_run,
-                "relatedCount": related_count,
                 "schedule": {
                     "description": schedule.get("description"),
                     "isPaused": schedule.get("isPaused"),
@@ -162,7 +155,7 @@ async def run_orchestrator_stream(key: str):
     async def event_generator():
         try:
             async for line in execute_workflow_stream(
-                orchestrator["workflow_id"], inputs=orchestrator["inputs"], envs={}
+                orchestrator["workflow_id"], inputs=orchestrator["inputs"], envs=orchestrator["envs"]
             ):
                 yield f"{line}\n"
         except httpx.HTTPStatusError as e:

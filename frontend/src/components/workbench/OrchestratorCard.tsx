@@ -21,7 +21,6 @@ export interface OrchestratorStatus {
   isConfigured: boolean
   isActive: boolean
   latestRun: { id: string; status: string; createdAt: string; updatedAt: string } | null
-  relatedCount: { label: string; count: number } | null
   schedule: { description: string | null; isPaused: boolean | null; timezone: string | null } | null
 }
 
@@ -171,12 +170,6 @@ export function OrchestratorCard({ status, onRunComplete }: OrchestratorCardProp
           </Button>
         </div>
 
-        {status.relatedCount && (
-          <div className='mt-3 flex items-baseline gap-2'>
-            <span className='text-2xl font-bold text-brand-navy'>{status.relatedCount.count}</span>
-            <span className='text-xs text-muted-foreground'>{status.relatedCount.label}</span>
-          </div>
-        )}
       </CardHeader>
       <CardContent className='space-y-4'>
         {status.batchNote && (
