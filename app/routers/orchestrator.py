@@ -27,6 +27,20 @@ _MANUAL_VALIDATION_ENVS = {
     "SUPABASE_PASSWORD": SUPABASE_PASSWORD,
 }
 
+# Same idea for "Issue Payments and Emails" — its steps read SUPABASE_SERVICE_ROLE_KEY,
+# while its Email Vendor Operator subworkflow reads SUPABASE_KEY/SUPABASE_API_KEY
+# (per the workflow's own env descriptions: "same value as SUPABASE_SERVICE_ROLE_KEY").
+# Unlike SUPABASE_URL/USERNAME/PASSWORD/SUPABASE_SERVICE_ROLE_KEY, those two have no
+# baked-in default on Supervity's side, so they must be passed at runtime.
+_ISSUE_PAYMENTS_ENVS = {
+    "SUPABASE_URL": SUPABASE_URL,
+    "SUPABASE_SERVICE_ROLE_KEY": SUPABASE_KEY,
+    "SUPABASE_KEY": SUPABASE_KEY,
+    "SUPABASE_API_KEY": SUPABASE_KEY,
+    "SUPABASE_USERNAME": SUPABASE_USERNAME,
+    "SUPABASE_PASSWORD": SUPABASE_PASSWORD,
+}
+
 # The master orchestrators surfaced in the Workbench, each pinned to a
 # specific Supervity workflow. `related_status` names the invoices.status
 # value shown as a live count alongside that card (None if not applicable).
@@ -58,11 +72,11 @@ ORCHESTRATORS = {
         "related_status": "pending_approval",
     },
     "issue-payments": {
-        "workflow_id": None,  # TODO: set once this operator is created on Supervity
+        "workflow_id": "019fe03f-3db9-7000-bad5-2808c6571f29",
         "name": "Issue Payments",
         "description": "Updates open invoices to closed and emails vendors when enabled by policy.",
         "inputs": {},
-        "envs": {},
+        "envs": _ISSUE_PAYMENTS_ENVS,
         "related_status": "open",
     },
 }
