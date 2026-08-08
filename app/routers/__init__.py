@@ -26,6 +26,7 @@ from .company import router as company_router
 from .fx_rate import router as fx_rate_router
 from .gl_account import router as gl_account_router
 from .goods_receipt import router as goods_receipt_router
+from .invoice_audit_log import router as invoice_audit_log_router
 from .price_condition import router as price_condition_router
 from .purchase_order import router as purchase_order_router
 from .purchase_order_line import router as purchase_order_line_router
@@ -49,6 +50,7 @@ __all__ = [
     "fx_rate_router",
     "gl_account_router",
     "goods_receipt_router",
+    "invoice_audit_log_router",
     "price_condition_router",
     "purchase_order_router",
     "purchase_order_line_router",
