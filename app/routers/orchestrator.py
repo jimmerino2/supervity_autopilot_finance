@@ -1,7 +1,7 @@
 # app/routers/orchestrator.py
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 import httpx
 
@@ -16,13 +16,14 @@ router = APIRouter(prefix="/orchestrator", tags=["Orchestrator"])
 # another run of the same operator until the current one finishes.
 _ACTIVE_STATUSES = {"running", "waiting", "scheduled"}
 
-# Passed as runtime `envs` on execute so the "Generate Invoice Review Forms"
-# workflow's Supabase step authenticates with this app's credentials. Names on
+# Passed as runtime `envs` on execute so the "Manual Invoice Validation"
+# workflow's Supabase steps authenticate with this app's credentials. Names on
 # the right are the exact env var names the workflow reads (per its Supervity
-# config), which differ from the naming used by other workflows (e.g. policies.py).
+# config) — notably SUPABASE_TOKEN here, not SUPABASE_API_KEY as other
+# workflows use (verified live via GET /workflows/:id).
 _MANUAL_VALIDATION_ENVS = {
     "SUPABASE_URL": SUPABASE_URL,
-    "SUPABASE_API_KEY": SUPABASE_KEY,
+    "SUPABASE_TOKEN": SUPABASE_KEY,
     "SUPABASE_USERNAME": SUPABASE_USERNAME,
     "SUPABASE_PASSWORD": SUPABASE_PASSWORD,
 }
@@ -64,9 +65,17 @@ ORCHESTRATORS = {
         "related_status": "parked",
     },
     "manual-validation": {
-        "workflow_id": "019fe02b-eaa1-7000-bf92-0a6bad1a5c47",
-        "name": "Generate Invoice Review Forms",
-        "description": "Reviews blocked invoices and generates Invoice Manual Approval Requests for a human reviewer.",
+        # Points at the "Manaul Invoice Validation" subworkflow (takes
+        # user_email/invoice_doc_no/new_status) rather than its old parent
+        # "Orchestrator - Manual Invoice Validation" — that master workflow
+        # (019fe02b-eaa1-7000-bf92-0a6bad1a5c47, bulk-processes all blocked
+        # invoices with no per-invoice inputs) is still used elsewhere but is
+        # no longer triggered from the Workbench UI. This entry now backs the
+        # single-invoice "Review" action instead, with invoice_doc_no/new_status
+        # supplied dynamically per call (see run_orchestrator_stream).
+        "workflow_id": "019fdf81-ac15-7000-a2a6-018d018a1d0e",
+        "name": "Manual Invoice Validation",
+        "description": "Applies a reviewer's decision (open/blocked) to a single pending-approval invoice and logs it to the audit trail.",
         "inputs": {},
         "envs": _MANUAL_VALIDATION_ENVS,
         "related_status": "pending_approval",
@@ -175,17 +184,36 @@ async def get_orchestrators_status():
 
 
 @router.post("/{key}/run/stream")
-async def run_orchestrator_stream(key: str):
+async def run_orchestrator_stream(key: str, request: Request):
     """SSE-streamed execution of the given orchestrator — proxies Supervity's
-    stream back to the caller."""
+    stream back to the caller.
+
+    Most orchestrators run with their static, pre-configured `inputs` (empty
+    body). Per-invoice actions like the "manual-validation" review can instead
+    POST a JSON body `{"inputs": {...}}` to override/add specific input
+    fields for this run only — e.g. invoice_doc_no/new_status for a single
+    review decision. The caller's email (already sent as X-Approver-Email by
+    postSSE) is filled in as `user_email` when not explicitly provided.
+    """
     orchestrator = _get_orchestrator(key)
     if not orchestrator["workflow_id"]:
         raise HTTPException(status_code=501, detail=f"'{orchestrator['name']}' is not configured yet.")
 
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    dynamic_inputs = (body or {}).get("inputs") or {}
+
+    inputs = {**orchestrator["inputs"], **dynamic_inputs}
+    approver_email = request.headers.get("x-approver-email")
+    if approver_email:
+        inputs.setdefault("user_email", approver_email)
+
     async def event_generator():
         try:
             async for line in execute_workflow_stream(
-                orchestrator["workflow_id"], inputs=orchestrator["inputs"], envs=orchestrator["envs"]
+                orchestrator["workflow_id"], inputs=inputs, envs=orchestrator["envs"]
             ):
                 yield f"{line}\n"
         except httpx.HTTPStatusError as e:

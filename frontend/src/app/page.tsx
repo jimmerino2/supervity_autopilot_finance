@@ -164,11 +164,18 @@ interface AutomationStats {
   automatedPercentage: number | null
 }
 
+interface InvoiceCounts {
+  parked: number
+  pendingApproval: number
+  open: number
+}
+
 // Main Dashboard — no auth required, renders directly
 export default function HomePage() {
   const [totalInvoiceCount, setTotalInvoiceCount] = useState(0)
   const [successfulInvoiceCount, setSuccessfulInvoiceCount] = useState(0)
   const [automationStats, setAutomationStats] = useState<AutomationStats | null>(null)
+  const [invoiceCounts, setInvoiceCounts] = useState<InvoiceCounts>({ parked: 0, pendingApproval: 0, open: 0 })
   const [runHealthStats, setRunHealthStats] = useState<RunHealthStats>({
     activeRuns: 0,
     successRate: null,
@@ -198,8 +205,18 @@ export default function HomePage() {
       }
     }
 
+    const loadWorkbenchInvoiceCounts = async () => {
+      try {
+        const counts = await apiClient.get<InvoiceCounts>('/api/orchestrator/invoice-counts')
+        setInvoiceCounts(counts)
+      } catch (error) {
+        console.error('Failed to load workbench invoice counts', error)
+      }
+    }
+
     loadInvoiceMetrics()
     loadAutomationStats()
+    loadWorkbenchInvoiceCounts()
   }, [])
 
   return (
@@ -242,6 +259,35 @@ export default function HomePage() {
           icon={Icons.activity}
           colorClass='bg-brand-cornflower'
           delay={0.4}
+        />
+        <StatCard
+          title='Parked Invoices'
+          value={invoiceCounts.parked}
+          icon={Icons.inbox}
+          colorClass='bg-brand-navy'
+          delay={0.5}
+        />
+        <StatCard
+          title='Pending Approval'
+          value={invoiceCounts.pendingApproval}
+          icon={Icons.clock}
+          colorClass='bg-brand-purple'
+          delay={0.6}
+        />
+        <StatCard
+          title='Open Invoices'
+          value={invoiceCounts.open}
+          icon={Icons.fileText}
+          colorClass='bg-brand-cornflower'
+          delay={0.7}
+        />
+        <StatCard
+          title='Success Rate'
+          value={runHealthStats.successRate ?? 0}
+          suffix='%'
+          icon={Icons.trendingUp}
+          colorClass='bg-gradient-to-br from-brand-navy to-brand-purple'
+          delay={0.8}
         />
       </div>
 

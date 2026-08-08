@@ -93,16 +93,44 @@ async def list_invoice():
 
 @router.get("/{invoice_doc_no}")
 async def get_invoice(invoice_doc_no: int):
+    """Single invoice enriched with related master data. vendor_id is a real
+    FK (embedded directly); po_id/gl_account_code/company_code_on_invoice are
+    raw values extracted from the invoice document itself — not enforced
+    FKs, since a mismatch against master data is exactly what can block an
+    invoice — so those are looked up best-effort as separate queries."""
     try:
         response = (
             supabase.table("invoices")
-            .select("*")
+            .select("*, vendor:vendor(vendor_name, tax_id, bank_country, bank_key, bank_account_number, country_code, email, is_blocked)")
             .eq("invoice_doc_no", invoice_doc_no)
             .execute()
         )
         if not response.data:
             raise HTTPException(status_code=404, detail="Invoice not found")
-        return response.data[0]
+        invoice = response.data[0]
+
+        po_id = invoice.get("po_id")
+        if po_id:
+            po = supabase.table("purchase_order").select("*").eq("po_id", po_id).execute()
+            invoice["purchase_order"] = po.data[0] if po.data else None
+        else:
+            invoice["purchase_order"] = None
+
+        gl_account_code = invoice.get("gl_account_code")
+        if gl_account_code:
+            gl_account = supabase.table("gl_account").select("*").eq("gl_account_code", gl_account_code).execute()
+            invoice["gl_account"] = gl_account.data[0] if gl_account.data else None
+        else:
+            invoice["gl_account"] = None
+
+        company_code = invoice.get("company_code_on_invoice")
+        if company_code:
+            company = supabase.table("company").select("*").eq("company_code", company_code).execute()
+            invoice["company"] = company.data[0] if company.data else None
+        else:
+            invoice["company"] = None
+
+        return invoice
     except HTTPException:
         raise
     except Exception as e:

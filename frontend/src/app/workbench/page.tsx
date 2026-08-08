@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { apiClient } from '@/lib/api-client'
 import { Icons } from '@/components/ui/icons'
 import { OrchestratorCard, type OrchestratorStatus } from '@/components/workbench/OrchestratorCard'
-import { UserFormsList } from '@/components/workbench/UserFormsList'
+import { InvoiceReviewQueue } from '@/components/workbench/InvoiceReviewQueue'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -20,7 +20,6 @@ export default function WorkbenchPage() {
   const [isLoadingInitial, setIsLoadingInitial] = useState(true)
   const [orchestrators, setOrchestrators] = useState<OrchestratorStatus[]>([])
   const [initialError, setInitialError] = useState<string | null>(null)
-  const [isGeneratingReviewForms, setIsGeneratingReviewForms] = useState(false)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -68,19 +67,20 @@ export default function WorkbenchPage() {
         </motion.div>
       )}
 
-      <motion.div variants={itemVariants} className='grid gap-6 lg:grid-cols-2 xl:grid-cols-4'>
-        {orchestrators.map((orch) => (
-          <OrchestratorCard
-            key={orch.key}
-            status={orch}
-            onRunComplete={loadStatus}
-            onRunningChange={orch.key === 'manual-validation' ? setIsGeneratingReviewForms : undefined}
-          />
-        ))}
+      <motion.div variants={itemVariants} className='grid gap-6 lg:grid-cols-3'>
+        {orchestrators
+          // "Manual Invoice Validation" now backs the per-invoice Review
+          // action below instead of a bulk Run button — it's still used
+          // elsewhere (its original master workflow keeps running on its own
+          // schedule), just not surfaced as a card here.
+          .filter((orch) => orch.key !== 'manual-validation')
+          .map((orch) => (
+            <OrchestratorCard key={orch.key} status={orch} onRunComplete={loadStatus} />
+          ))}
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <UserFormsList refreshWhile={isGeneratingReviewForms} />
+        <InvoiceReviewQueue />
       </motion.div>
     </motion.div>
   )
