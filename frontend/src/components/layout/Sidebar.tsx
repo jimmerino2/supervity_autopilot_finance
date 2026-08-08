@@ -63,7 +63,11 @@ const navItems: NavSection[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: Icons.dashboard },
       { href: '/workbench', label: 'Workbench', icon: Icons.workbench },
-      { href: '/admin/invoices', label: 'Invoices', icon: Icons.fileText },
+      {
+        href: '/admin/invoice-audit-log',
+        label: 'Audit Log',
+        icon: Icons.fileText,
+      },
     ],
   },
   {
@@ -77,9 +81,17 @@ const navItems: NavSection[] = [
   {
     title: 'Procurement',
     items: [
-      { href: '/admin/purchase-orders', label: 'Purchase Orders', icon: Icons.folder },
-      { href: '/admin/goods-receipts', label: 'Goods Receipts', icon: Icons.archive },
-      { href: '/admin/invoice-audit-log', label: 'Audit Log', icon: Icons.fileText },
+      { href: '/admin/invoices', label: 'Invoices', icon: Icons.fileText },
+      {
+        href: '/admin/purchase-orders',
+        label: 'Purchase Orders',
+        icon: Icons.folder,
+      },
+      {
+        href: '/admin/goods-receipts',
+        label: 'Goods Receipts',
+        icon: Icons.archive,
+      },
     ],
   },
   {
@@ -88,7 +100,11 @@ const navItems: NavSection[] = [
       { href: '/admin/vendors', label: 'Vendors', icon: Icons.table },
       { href: '/admin/companies', label: 'Companies', icon: Icons.building },
       { href: '/admin/gl-accounts', label: 'GL Accounts', icon: Icons.table2 },
-      { href: '/admin/price-conditions', label: 'Price Conditions', icon: Icons.flag },
+      {
+        href: '/admin/price-conditions',
+        label: 'Price Conditions',
+        icon: Icons.flag,
+      },
       { href: '/admin/fx-rates', label: 'FX Rates', icon: Icons.trendingUp },
     ],
   },
@@ -360,4 +376,3 @@ export function Sidebar() {
     </TooltipProvider>
   )
 }
-
